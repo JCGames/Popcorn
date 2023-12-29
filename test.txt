@@ -1,0 +1,25 @@
+// this script is a test script to display the abilities of popcorn [a little goes a long way XD]
+
+print("Hello, world!") // prints a line
+
+x = 10
+print(x)
+
+x = x + 10
+print(x)
+
+print("=== CASTING ===")
+
+x = int(x) // cast to an integer
+print(x)
+
+x = bool(x) // cast to a boolean
+print(x)
+
+x = double(x) // cast to a double
+print(x)
+
+print("=== MATH ===")
+
+x = 10 + 10 * 2 - 1 * -1 / 2
+print(x)

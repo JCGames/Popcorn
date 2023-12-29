@@ -1,5 +1,5 @@
 main: main.o lexer.o parser.o runner.o
-	g++ -g -Wall $^ -o myscript
+	g++ -g -Wall $^ -o popcorn
 
 main.o: main.cpp
 	g++ -c $<
@@ -14,7 +14,7 @@ runner.o: runner.cpp
 	g++ -c $<
 
 clean:
-	del *.exe *.o main
+	del *.o
 
 clean-wsl:
-	rm -rf main *.o *.exe
+	rm -rf main *.o

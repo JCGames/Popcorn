@@ -5,8 +5,13 @@ Runner::Runner()
 
 }
 
-Object Runner::run_func(ast::FunctionCall* funcCall)
+Object Runner::call_function(ast::FunctionCall* funcCall)
 {
+    /**
+     * Built in functions
+    */
+
+    // PRINT FUNCTION
     if (funcCall->functionName == "print")
     {
         if (funcCall->parameterList.size() != 1)
@@ -14,6 +19,7 @@ Object Runner::run_func(ast::FunctionCall* funcCall)
 
         std::cout << interpret(funcCall->parameterList[0]).cast_to_string().strValue << std::endl;
     }
+    // CAST TO INT FUNCTION
     else if (funcCall->functionName == "int")
     {
         if (funcCall->parameterList.size() != 1)
@@ -21,6 +27,7 @@ Object Runner::run_func(ast::FunctionCall* funcCall)
 
         return interpret(funcCall->parameterList[0]).cast_to_int();
     }
+    // CAST TO BOOL FUNCTION
     else if (funcCall->functionName == "bool")
     {
         if (funcCall->parameterList.size() != 1)
@@ -28,50 +35,13 @@ Object Runner::run_func(ast::FunctionCall* funcCall)
         
         return interpret(funcCall->parameterList[0]).cast_to_bool();
     }
-
-    return Object();
-}
-
-Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
-{
-    switch (binaryOperator->get_type())
+    // CAST TO DOUBLE FUNCTION
+    else if (funcCall->functionName == "double")
     {
-        case ast::StatementType::ADD_OPERATOR:
-            if (ast::AddOperator* addOp = static_cast<ast::AddOperator*>(binaryOperator))
-            {
-                Object left = interpret(addOp->left);
-                Object right = interpret(addOp->right);
-
-                return left.add_to(right);
-            }
-            break;
-        case ast::StatementType::SUB_OPERATOR:
-            if (ast::SubtractOperator* subtractOp = static_cast<ast::SubtractOperator*>(binaryOperator))
-            {
-                Object left = interpret(subtractOp->left);
-                Object right = interpret(subtractOp->right);
-
-                return left.subtract_from(right);
-            }
-            break;
-        case ast::StatementType::MUL_OPERATOR:
-            if (ast::MultiplyOperator* multiplyOp = static_cast<ast::MultiplyOperator*>(binaryOperator))
-            {
-                Object left = interpret(multiplyOp->left);
-                Object right = interpret(multiplyOp->right);
-
-                return left.multiplied_by(right);
-            }
-            break;
-        case ast::StatementType::DIV_OPERATOR:
-            if (ast::DivideOperator* divideOp = static_cast<ast::DivideOperator*>(binaryOperator))
-            {
-                Object left = interpret(divideOp->left);
-                Object right = interpret(divideOp->right);
-
-                return left.divided_by(right);
-            }
-            break;
+        if (funcCall->parameterList.size() != 1)
+            throw std::runtime_error("Function [double] only takes one argument!");
+        
+        return interpret(funcCall->parameterList[0]).cast_to_double();
     }
 
     return Object();
@@ -109,28 +79,51 @@ Object Runner::interpret(ast::Statement* stat)
             if (ast::VariableAssignment* va = static_cast<ast::VariableAssignment*>(stat))
             {
                 if (!has_variable(va->variableName))
-                {
                     add_variable(_Variable(va->variableName, interpret(va->expression)));
-                }
                 else
-                {
                     get_variable(va->variableName).object = interpret(va->expression);
-                }
             }
             break;
         case ast::StatementType::FUNCTION_CALL:
             if (ast::FunctionCall* funcCall = static_cast<ast::FunctionCall*>(stat))
             {
-                return run_func(funcCall);
+                return call_function(funcCall);
             }
             break;
         case ast::StatementType::ADD_OPERATOR:
-        case ast::StatementType::SUB_OPERATOR:
-        case ast::StatementType::DIV_OPERATOR:
-        case ast::StatementType::MUL_OPERATOR:
-            if (ast::BinaryOperator* binaryOp = static_cast<ast::BinaryOperator*>(stat))
+            if (ast::AddOperator* addOp = static_cast<ast::AddOperator*>(stat))
             {
-                return eval_binary_operator(binaryOp);
+                Object left = interpret(addOp->left);
+                Object right = interpret(addOp->right);
+
+                return left.add_to(right);
+            }
+            break;
+        case ast::StatementType::SUB_OPERATOR:
+            if (ast::SubtractOperator* subtractOp = static_cast<ast::SubtractOperator*>(stat))
+            {
+                Object left = interpret(subtractOp->left);
+                Object right = interpret(subtractOp->right);
+
+                return left.subtract_from(right);
+            }
+            break;
+        case ast::StatementType::MUL_OPERATOR:
+            if (ast::MultiplyOperator* multiplyOp = static_cast<ast::MultiplyOperator*>(stat))
+            {
+                Object left = interpret(multiplyOp->left);
+                Object right = interpret(multiplyOp->right);
+
+                return left.multiplied_by(right);
+            }
+            break;
+        case ast::StatementType::DIV_OPERATOR:
+            if (ast::DivideOperator* divideOp = static_cast<ast::DivideOperator*>(stat))
+            {
+                Object left = interpret(divideOp->left);
+                Object right = interpret(divideOp->right);
+
+                return left.divided_by(right);
             }
             break;
         case ast::StatementType::NEGATE:

@@ -31,21 +31,25 @@ class Object
         {
             type = ObjectType::NULL_OBJ;
         }
+
         Object(std::string strValue)
         {
             this->type = ObjectType::STRING;
             this->strValue = strValue;
         }
+
         Object(bool boolValue)
         {
             this->type = ObjectType::BOOLEAN;
             this->boolValue = boolValue;
         }
+
         Object(int intValue)
         {
             this->type = ObjectType::INTEGER;
             this->intValue = intValue;
         }
+
         Object(double doubleValue)
         {
             this->type = ObjectType::DOUBLE;
@@ -87,6 +91,34 @@ class Object
 
                         try {
                             value = std::stoi(strValue);
+                        } catch (const std::exception& e) {
+                            throw std::runtime_error(e.what());
+                        }
+
+                        return Object(value);
+                    }   
+                    break;
+            }
+
+            return Object();
+        }
+        
+        Object cast_to_double()
+        {
+            switch (type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object((double)boolValue);
+                case ObjectType::INTEGER:
+                    return Object((double)intValue);
+                case ObjectType::DOUBLE:
+                    return Object(doubleValue);
+                case ObjectType::STRING:
+                    {
+                        double value;
+
+                        try {
+                            value = std::stof(strValue);
                         } catch (const std::exception& e) {
                             throw std::runtime_error(e.what());
                         }
@@ -399,8 +431,7 @@ class Runner
 {
     std::vector<_Variable> _variables;
 
-    Object run_func(ast::FunctionCall* funcCall);
-    Object eval_binary_operator(ast::BinaryOperator* binaryOperator);
+    Object call_function(ast::FunctionCall* funcCall);
 
     Object interpret(ast::Statement* stat);
 

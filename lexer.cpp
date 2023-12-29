@@ -37,18 +37,23 @@ Token Lexer::get_next_token()
 {
     std::string value;
 
+    // END OF FILE
     if (is_end_of_file())
     {
         return { TokenType::END_OF_FILE, "", _currentLineNumber };
     }
+    // END OF LINE
     else if (_current == '\n' || _current == ';')
     {
-        get_next();
         int value = _currentLineNumber;
-        ++_currentLineNumber;
+
+        if (_current != ';')
+            ++_currentLineNumber;
+
+        get_next();
         return { TokenType::END_OF_LINE, "", value };
     }
-    // Whitespace
+    // WHITESPACE
     else if (iswspace(_current) && _current != '\0' && _current != '\n')
     {
         while (iswspace(_current) && _current != '\0' && _current != '\n')
@@ -56,6 +61,7 @@ Token Lexer::get_next_token()
 
         return { TokenType::WHITESPACE, "", _currentLineNumber };
     }
+    // NUMBERS
     else if (isdigit(_current) || (_current == '.' && isdigit(peek_next())))
     {
         while (isdigit(_current) || (_current == '.' && isdigit(peek_next())))
@@ -70,6 +76,7 @@ Token Lexer::get_next_token()
 
         return { TokenType::NUM, value, _currentLineNumber };
     }
+    // WORDS
     else if (isalpha(_current) || _current == '_')
     {
         while (isalpha(_current) || isdigit(_current) || _current == '_')
@@ -79,8 +86,12 @@ Token Lexer::get_next_token()
             get_next();
         }
 
+        if (value == "true" || value == "false")
+            return { TokenType::BOOLEAN, value, _currentLineNumber };
+
         return { TokenType::WORD, value, _currentLineNumber };
     }
+    // STRINGS
     else if (_current == '"')
     {
         get_next();
@@ -98,6 +109,7 @@ Token Lexer::get_next_token()
 
         return { TokenType::STRING, value, _currentLineNumber };
     }
+    // OPERATORS
     else if (_current == '+')
     {
         get_next();
@@ -129,6 +141,7 @@ Token Lexer::get_next_token()
         get_next();
         return { TokenType::ASSIGNMENT, "", _currentLineNumber };
     }
+    // BODY
     else if (_current == '{')
     {
         get_next();
@@ -170,7 +183,6 @@ std::vector<Token> Lexer::get_tokens()
     while (token.type != TokenType::END_OF_FILE)
     {
         _tokens.push_back(token);
-
         token = get_next_token();
     }
 

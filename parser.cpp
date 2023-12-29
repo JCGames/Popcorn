@@ -64,9 +64,18 @@ Token Parser::peek_next_non_wspace()
 void Parser::move_next_line()
 {
     int nextLine = _currentToken.lineNumber + 1;
+    bool hasFoundEndOfLineToken = false;
 
     while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+    {
         move_next();
+        
+        if (_currentToken.type == TokenType::END_OF_LINE)
+            hasFoundEndOfLineToken = true;
+
+        if (hasFoundEndOfLineToken && _currentToken.type != TokenType::WHITESPACE && _currentToken.type != TokenType::END_OF_LINE)
+            break;
+    }
 }
 
 /// @brief Moves to the first non-whitespace tokens and advances through each line to find it
@@ -109,7 +118,7 @@ Expression* Parser::parse_expression()
     expression->root = left;
     return expression;
 }
- 
+
 Statement* Parser::parse_term()
 {
     Statement* left = parse_factor();

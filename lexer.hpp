@@ -25,6 +25,7 @@ enum class TokenType
     CLOSE_PARAN,
     COMMA,
     COMMENT,
+    BOOLEAN
 };
 
 static std::string get_token_type_name(TokenType type)
@@ -49,6 +50,7 @@ static std::string get_token_type_name(TokenType type)
         case TokenType::CLOSE_PARAN: return "CLOSED PARANTHESIS";
         case TokenType::COMMA: return "COMMA";
         case TokenType::COMMENT: return "COMMENT";
+        case TokenType::BOOLEAN: return "BOOLEAN";
         default: return "NONE";
     }
 }
