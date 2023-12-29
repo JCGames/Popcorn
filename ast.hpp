@@ -22,7 +22,8 @@ namespace ast
         VARIABLE_ASSIGNMENT,
         BLOCK,
         VARIABLE,
-        FUNCTION_CALL
+        FUNCTION_CALL,
+        NEGATE,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -43,6 +44,7 @@ namespace ast
             case StatementType::BLOCK: return "BLOCK";
             case StatementType::VARIABLE: return "VARIABLE";
             case StatementType::FUNCTION_CALL: return "FUNCTION CALL";
+            case StatementType::NEGATE: return "NEGATE";
             default: return "UNDEFINED";
         }
     }
@@ -294,6 +296,17 @@ namespace ast
             }
     };
 
+    class Negate : public UnaryOperator
+    {
+        public:
+            Negate(Statement* value) : UnaryOperator(value) { }
+
+            StatementType get_type()
+            {
+                return StatementType::NEGATE;
+            }
+    };
+
     class AST
     {
         public:
@@ -381,6 +394,12 @@ namespace ast
                             printf("%s---PARAMETER LIST:\n", indent.c_str());
                             for (auto e : funcCall->parameterList)
                                 print_statement(e, indent + '\t');
+                        }
+                        break;
+                    case StatementType::NEGATE:
+                        if (Negate* negate = static_cast<Negate*>(statement))
+                        {
+                            print_statement(negate->value, indent + '\t');
                         }
                         break;
                 }

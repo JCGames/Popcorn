@@ -12,14 +12,21 @@ Object Runner::run_func(ast::FunctionCall* funcCall)
         if (funcCall->parameterList.size() != 1)
             throw std::runtime_error("Function [print] only takes one argument!");
 
-        std::cout << cast_to_string(interpret(funcCall->parameterList[0])) << std::endl;
+        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().strValue << std::endl;
     }
     else if (funcCall->functionName == "int")
     {
         if (funcCall->parameterList.size() != 1)
             throw std::runtime_error("Function [int] only takes one argument!");
 
-        return cast_to_int(interpret(funcCall->parameterList[0]));
+        return interpret(funcCall->parameterList[0]).cast_to_int();
+    }
+    else if (funcCall->functionName == "bool")
+    {
+        if (funcCall->parameterList.size() != 1)
+            throw std::runtime_error("Function [bool] only takes one argument!");
+        
+        return interpret(funcCall->parameterList[0]).cast_to_bool();
     }
 
     return Object();
@@ -35,14 +42,7 @@ Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
                 Object left = interpret(addOp->left);
                 Object right = interpret(addOp->right);
 
-                if (left.get_type() == ObjectType::STRING || right.get_type() == ObjectType::STRING)
-                {
-
-                }
-                else if (left.doubleValue)
-                {
-
-                }
+                return left.add_to(right);
             }
             break;
         case ast::StatementType::SUB_OPERATOR:
@@ -50,6 +50,8 @@ Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
             {
                 Object left = interpret(subtractOp->left);
                 Object right = interpret(subtractOp->right);
+
+                return left.subtract_from(right);
             }
             break;
         case ast::StatementType::MUL_OPERATOR:
@@ -57,6 +59,8 @@ Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
             {
                 Object left = interpret(multiplyOp->left);
                 Object right = interpret(multiplyOp->right);
+
+                return left.multiplied_by(right);
             }
             break;
         case ast::StatementType::DIV_OPERATOR:
@@ -64,50 +68,13 @@ Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
             {
                 Object left = interpret(divideOp->left);
                 Object right = interpret(divideOp->right);
+
+                return left.divided_by(right);
             }
             break;
     }
 
     return Object();
-}
-
-Object Runner::cast_to_int(Object obj)
-{
-    if (obj.is_number())
-    {
-        switch (obj.get_type())
-        {
-            case ObjectType::BOOLEAN:
-                return Object((int)obj.intValue);
-            case ObjectType::INTEGER:
-                return Object(obj.intValue);
-            case ObjectType::DOUBLE:
-                return Object((int)obj.doubleValue);
-        }
-    }
-    else
-    {
-        throw std::runtime_error("Cannot cast a non-number to an integer!");
-    }
-
-    return Object(0);
-}
-
-std::string Runner::cast_to_string(Object obj)
-{
-    switch (obj.get_type())
-    {
-        case ObjectType::STRING:
-            return obj.strValue;
-        case ObjectType::BOOLEAN:
-            return obj.boolValue ? "TRUE" : "FALSE";
-        case ObjectType::INTEGER:
-            return std::to_string(obj.intValue);
-        case ObjectType::DOUBLE:
-            return std::to_string(obj.doubleValue);
-    }
-
-    return "NULL";
 }
 
 Object Runner::interpret(ast::Statement* stat)
@@ -150,10 +117,19 @@ Object Runner::interpret(ast::Statement* stat)
                 return run_func(funcCall);
             }
             break;
-        case ast::StatementType::BINARY_OPERATOR:
+        case ast::StatementType::ADD_OPERATOR:
+        case ast::StatementType::SUB_OPERATOR:
+        case ast::StatementType::DIV_OPERATOR:
+        case ast::StatementType::MUL_OPERATOR:
             if (ast::BinaryOperator* binaryOp = static_cast<ast::BinaryOperator*>(stat))
             {
                 return eval_binary_operator(binaryOp);
+            }
+            break;
+        case ast::StatementType::NEGATE:
+            if (ast::Negate* negate = static_cast<ast::Negate*>(stat))
+            {
+                return interpret(negate->value).negate();
             }
             break;
     }

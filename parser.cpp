@@ -173,6 +173,12 @@ Statement* Parser::parse_factor()
     {
         result = new Variable(_currentToken.value);
     }
+    // NEGATE
+    else if (_currentToken.type == TokenType::SUB)
+    {
+        move_next_non_wspace();
+        return new Negate(parse_factor());
+    }
     // ERROR
     else
     {
