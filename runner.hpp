@@ -101,13 +101,12 @@ class Object
         
         Object cast_to_string()
         {
-
             switch (type)
             {
                 case ObjectType::STRING:
                     return Object(strValue);
                 case ObjectType::BOOLEAN:
-                    return Object(boolValue ? "True" : "False");
+                    return Object((std::string)(boolValue ? "True" : "False"));
                 case ObjectType::INTEGER:
                     return Object(std::to_string(intValue));
                 case ObjectType::DOUBLE:
@@ -407,7 +406,7 @@ class Runner
 
     void add_variable(_Variable variable);
     void remove_variable(_Variable variable);
-    _Variable get_variable(std::string name);
+    _Variable& get_variable(std::string name);
     bool has_variable(std::string name);
 
     public:

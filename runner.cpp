@@ -108,7 +108,14 @@ Object Runner::interpret(ast::Statement* stat)
         case ast::StatementType::VARIABLE_ASSIGNMENT:
             if (ast::VariableAssignment* va = static_cast<ast::VariableAssignment*>(stat))
             {
-                add_variable(_Variable(va->variableName, interpret(va->expression)));
+                if (!has_variable(va->variableName))
+                {
+                    add_variable(_Variable(va->variableName, interpret(va->expression)));
+                }
+                else
+                {
+                    get_variable(va->variableName).object = interpret(va->expression);
+                }
             }
             break;
         case ast::StatementType::FUNCTION_CALL:
@@ -159,9 +166,9 @@ void Runner::remove_variable(_Variable variable)
     throw std::runtime_error("Variable " + variable.name + " has lost scope or was never declared!");
 }
 
-_Variable Runner::get_variable(std::string name)
+_Variable& Runner::get_variable(std::string name)
 {
-    for (auto v : _variables)
+    for (auto& v : _variables)
     {
         if (v.name == name)
             return v;
