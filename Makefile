@@ -1,5 +1,5 @@
 main: main.o lexer.o parser.o runner.o
-	g++ -g -Wall $^ -o main
+	g++ -g -Wall $^ -o myscript
 
 main.o: main.cpp
 	g++ -c $<

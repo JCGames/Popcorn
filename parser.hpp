@@ -22,19 +22,19 @@ class Parser
     void move_next_non_wspace_pass_eols();
     bool is_end_of_statement();
 
-    Expression* parse_expression();
-    Statement* parse_term();
-    Statement* parse_factor();
+    ast::Expression* parse_expression();
+    ast::Statement* parse_term();
+    ast::Statement* parse_factor();
 
-    Statement* get_next_statement();
-    FunctionCall* parse_function_call();
-    Block* get_block();
+    ast::Statement* get_next_statement();
+    ast::FunctionCall* parse_function_call();
+    ast::Block* get_block();
 
     public:
         Parser();
         Parser(const std::vector<Token>& tokens);
 
-        AST* parse_ast();
+        ast::AST* parse_ast();
 };
 
 #endif // PARSER

@@ -32,7 +32,7 @@ int main(int argc, char** args)
         }
 
         Parser parser(tokens);
-        AST* ast = parser.parse_ast();
+        ast::AST* ast = parser.parse_ast();
 
         if (DEBUG)
         {

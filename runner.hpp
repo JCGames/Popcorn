@@ -78,12 +78,12 @@ class Runner
 {
     std::vector<_Variable> _variables;
 
-    Object run_func(FunctionCall* funcCall);
-    Object eval_binary_operator(BinaryOperator* binaryOperator);
+    Object run_func(ast::FunctionCall* funcCall);
+    Object eval_binary_operator(ast::BinaryOperator* binaryOperator);
     Object cast_to_int(Object obj);
     std::string cast_to_string(Object obj);
 
-    Object interpret(Statement* stat);
+    Object interpret(ast::Statement* stat);
 
     void add_variable(_Variable variable);
     void remove_variable(_Variable variable);
@@ -93,7 +93,7 @@ class Runner
     public:
         Runner();
 
-        void run(AST& ast);
+        void run(ast::AST& ast);
 };
 
 #endif // RUNNER

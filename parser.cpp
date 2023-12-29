@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <string>
 
+using namespace ast;
+
 Parser::Parser()
 {
     _index = -1;

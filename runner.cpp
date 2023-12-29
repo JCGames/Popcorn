@@ -5,7 +5,7 @@ Runner::Runner()
 
 }
 
-Object Runner::run_func(FunctionCall* funcCall)
+Object Runner::run_func(ast::FunctionCall* funcCall)
 {
     if (funcCall->functionName == "print")
     {
@@ -25,12 +25,12 @@ Object Runner::run_func(FunctionCall* funcCall)
     return Object();
 }
 
-Object Runner::eval_binary_operator(BinaryOperator* binaryOperator)
+Object Runner::eval_binary_operator(ast::BinaryOperator* binaryOperator)
 {
     switch (binaryOperator->get_type())
     {
-        case StatementType::ADD_OPERATOR:
-            if (AddOperator* addOp = static_cast<AddOperator*>(binaryOperator))
+        case ast::StatementType::ADD_OPERATOR:
+            if (ast::AddOperator* addOp = static_cast<ast::AddOperator*>(binaryOperator))
             {
                 Object left = interpret(addOp->left);
                 Object right = interpret(addOp->right);
@@ -45,22 +45,22 @@ Object Runner::eval_binary_operator(BinaryOperator* binaryOperator)
                 }
             }
             break;
-        case StatementType::SUB_OPERATOR:
-            if (SubtractOperator* subtractOp = static_cast<SubtractOperator*>(binaryOperator))
+        case ast::StatementType::SUB_OPERATOR:
+            if (ast::SubtractOperator* subtractOp = static_cast<ast::SubtractOperator*>(binaryOperator))
             {
                 Object left = interpret(subtractOp->left);
                 Object right = interpret(subtractOp->right);
             }
             break;
-        case StatementType::MUL_OPERATOR:
-            if (MultiplyOperator* multiplyOp = static_cast<MultiplyOperator*>(binaryOperator))
+        case ast::StatementType::MUL_OPERATOR:
+            if (ast::MultiplyOperator* multiplyOp = static_cast<ast::MultiplyOperator*>(binaryOperator))
             {
                 Object left = interpret(multiplyOp->left);
                 Object right = interpret(multiplyOp->right);
             }
             break;
-        case StatementType::DIV_OPERATOR:
-            if (DivideOperator* divideOp = static_cast<DivideOperator*>(binaryOperator))
+        case ast::StatementType::DIV_OPERATOR:
+            if (ast::DivideOperator* divideOp = static_cast<ast::DivideOperator*>(binaryOperator))
             {
                 Object left = interpret(divideOp->left);
                 Object right = interpret(divideOp->right);
@@ -110,48 +110,48 @@ std::string Runner::cast_to_string(Object obj)
     return "NULL";
 }
 
-Object Runner::interpret(Statement* stat)
+Object Runner::interpret(ast::Statement* stat)
 {
     switch (stat->get_type())
     {
-        case StatementType::NUMBER:
-            if (Number* num = static_cast<Number*>(stat))
+        case ast::StatementType::NUMBER:
+            if (ast::Number* num = static_cast<ast::Number*>(stat))
             {
                 return Object(num->value);
             }
             break;
-        case StatementType::STRING:
-            if (String* str = static_cast<String*>(stat))
+        case ast::StatementType::STRING:
+            if (ast::String* str = static_cast<ast::String*>(stat))
             {
                 return Object(str->value);
             }
             break;
-        case StatementType::EXPRESSION:
-            if (Expression* expression = static_cast<Expression*>(stat))
+        case ast::StatementType::EXPRESSION:
+            if (ast::Expression* expression = static_cast<ast::Expression*>(stat))
             {
                 return interpret(expression->root);
             }
             break;
-        case StatementType::VARIABLE:
-            if (Variable* v = static_cast<Variable*>(stat))
+        case ast::StatementType::VARIABLE:
+            if (ast::Variable* v = static_cast<ast::Variable*>(stat))
             {
                 return get_variable(v->name).object;
             }
             break;
-        case StatementType::VARIABLE_ASSIGNMENT:
-            if (VariableAssignment* va = static_cast<VariableAssignment*>(stat))
+        case ast::StatementType::VARIABLE_ASSIGNMENT:
+            if (ast::VariableAssignment* va = static_cast<ast::VariableAssignment*>(stat))
             {
                 add_variable(_Variable(va->variableName, interpret(va->expression)));
             }
             break;
-        case StatementType::FUNCTION_CALL:
-            if (FunctionCall* funcCall = static_cast<FunctionCall*>(stat))
+        case ast::StatementType::FUNCTION_CALL:
+            if (ast::FunctionCall* funcCall = static_cast<ast::FunctionCall*>(stat))
             {
                 return run_func(funcCall);
             }
             break;
-        case StatementType::BINARY_OPERATOR:
-            if (BinaryOperator* binaryOp = static_cast<BinaryOperator*>(stat))
+        case ast::StatementType::BINARY_OPERATOR:
+            if (ast::BinaryOperator* binaryOp = static_cast<ast::BinaryOperator*>(stat))
             {
                 return eval_binary_operator(binaryOp);
             }
@@ -205,7 +205,7 @@ bool Runner::has_variable(std::string name)
     return false;
 }
 
-void Runner::run(AST& ast)
+void Runner::run(ast::AST& ast)
 {
     for (auto stat : ast.statements)
         interpret(stat);
