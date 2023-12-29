@@ -5,6 +5,50 @@ Runner::Runner()
 
 }
 
+void Runner::add_variable(_Variable variable)
+{
+    for (const auto& v : _variables)
+    {
+        if (v.name == variable.name)
+            throw std::runtime_error("Variable " + variable.name + " has already been declared!");
+    }
+
+    _variables.push_back(variable);
+}
+
+void Runner::remove_variable(_Variable variable)
+{
+    for (auto iter = _variables.begin(); iter != _variables.end(); ++iter)
+    {
+        if (iter->name == variable.name)
+            _variables.erase(iter);
+    }
+
+    throw std::runtime_error("Variable " + variable.name + " has lost scope or was never declared!");
+}
+
+_Variable& Runner::get_variable(std::string name)
+{
+    for (auto& v : _variables)
+    {
+        if (v.name == name)
+            return v;
+    }
+
+    throw std::runtime_error("Variable " + name + " has lost scope or was never declared!");
+}
+
+bool Runner::has_variable(std::string name)
+{    
+    for (const auto& v : _variables)
+    {
+        if (v.name == name)
+            return true;
+    }
+
+    return false;
+}
+
 Object Runner::call_function(ast::FunctionCall* funcCall)
 {
     /**
@@ -59,6 +103,12 @@ Object Runner::interpret(ast::Statement* stat)
             break;
         case ast::StatementType::STRING:
             if (ast::String* str = static_cast<ast::String*>(stat))
+            {
+                return Object(str->value);
+            }
+            break;
+        case ast::StatementType::BOOLEAN:
+            if (ast::Boolean* str = static_cast<ast::Boolean*>(stat))
             {
                 return Object(str->value);
             }
@@ -135,50 +185,6 @@ Object Runner::interpret(ast::Statement* stat)
     }
 
     return Object();
-}
-
-void Runner::add_variable(_Variable variable)
-{
-    for (const auto& v : _variables)
-    {
-        if (v.name == variable.name)
-            throw std::runtime_error("Variable " + variable.name + " has already been declared!");
-    }
-
-    _variables.push_back(variable);
-}
-
-void Runner::remove_variable(_Variable variable)
-{
-    for (auto iter = _variables.begin(); iter != _variables.end(); ++iter)
-    {
-        if (iter->name == variable.name)
-            _variables.erase(iter);
-    }
-
-    throw std::runtime_error("Variable " + variable.name + " has lost scope or was never declared!");
-}
-
-_Variable& Runner::get_variable(std::string name)
-{
-    for (auto& v : _variables)
-    {
-        if (v.name == name)
-            return v;
-    }
-
-    throw std::runtime_error("Variable " + name + " has lost scope or was never declared!");
-}
-
-bool Runner::has_variable(std::string name)
-{    
-    for (const auto& v : _variables)
-    {
-        if (v.name == name)
-            return true;
-    }
-
-    return false;
 }
 
 void Runner::run(ast::AST& ast)

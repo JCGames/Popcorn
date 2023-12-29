@@ -10,13 +10,13 @@
 
 class Parser
 {
-    std::vector<Token> _tokens;
+    std::vector<lex::Token> _tokens;
     int _index;
-    Token _currentToken;
+    lex::Token _currentToken;
 
     void move_next();
-    Token peek_next();
-    Token peek_next_non_wspace();
+    lex::Token peek_next();
+    lex::Token peek_next_non_wspace();
     void move_next_non_wspace();
     void move_next_line();
     void move_next_non_wspace_pass_eols();
@@ -32,7 +32,7 @@ class Parser
 
     public:
         Parser();
-        Parser(const std::vector<Token>& tokens);
+        Parser(const std::vector<lex::Token>& tokens);
 
         ast::AST* parse_ast();
 };

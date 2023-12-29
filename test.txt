@@ -23,3 +23,9 @@ print("=== MATH ===")
 
 x = 10 + 10 * 2 - 1 * -1 / 2
 print(x)
+
+x = true
+print(x)
+
+x = false
+print(x)

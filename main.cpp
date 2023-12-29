@@ -20,8 +20,12 @@ int main(int argc, char** args)
 
     if (argc > 1)
     {
-        Lexer lexer(args[1]);
-        std::vector<Token> tokens = lexer.get_tokens();
+        /**
+         * Lexing ...
+        */
+
+        lex::Lexer lexer(args[1]);
+        std::vector<lex::Token> tokens = lexer.get_tokens();
 
         if (DEBUG)
         {
@@ -31,6 +35,10 @@ int main(int argc, char** args)
                 print_token(token);
         }
 
+        /**
+         * Parsing ...
+        */
+
         Parser parser(tokens);
         ast::AST* ast = parser.parse_ast();
 
@@ -39,6 +47,10 @@ int main(int argc, char** args)
             printf("\n========== AST ==========\n");
             ast->print();
         }
+
+        /**
+         * Running ...
+        */
         
         Runner runner;
         runner.run(*ast);

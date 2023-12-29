@@ -24,6 +24,7 @@ namespace ast
         VARIABLE,
         FUNCTION_CALL,
         NEGATE,
+        BOOLEAN,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -45,6 +46,7 @@ namespace ast
             case StatementType::VARIABLE: return "VARIABLE";
             case StatementType::FUNCTION_CALL: return "FUNCTION CALL";
             case StatementType::NEGATE: return "NEGATE";
+            case StatementType::BOOLEAN: return "BOOLEAN";
             default: return "UNDEFINED";
         }
     }
@@ -304,6 +306,22 @@ namespace ast
             StatementType get_type()
             {
                 return StatementType::NEGATE;
+            }
+    };
+
+    class Boolean : public Statement
+    {
+        public:
+            bool value;
+
+            Boolean(bool value)
+            {
+                this->value = value;
+            }
+
+            StatementType get_type()
+            {
+                return StatementType::BOOLEAN;
             }
     };
 

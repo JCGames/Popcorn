@@ -1,8 +1,9 @@
-#include "parser.hpp"
 #include <stdexcept>
 #include <string>
+#include "parser.hpp"
 
 using namespace ast;
+using namespace lex;
 
 Parser::Parser()
 {
@@ -92,6 +93,10 @@ bool Parser::is_end_of_statement()
 {
     return _currentToken.type == TokenType::END_OF_LINE || _currentToken.type == TokenType::END_OF_FILE;
 }
+
+/**
+ * Expression stuff below
+*/
 
 /// @brief Ends on the next non-whitespace token.
 Expression* Parser::parse_expression()
@@ -188,6 +193,10 @@ Statement* Parser::parse_factor()
         move_next_non_wspace();
         return new Negate(parse_factor());
     }
+    else if (_currentToken.type == TokenType::BOOLEAN)
+    {
+        return new Boolean(_currentToken.value == "true" ? true : false);
+    }
     // ERROR
     else
     {
@@ -197,6 +206,10 @@ Statement* Parser::parse_factor()
     move_next_non_wspace();
     return result;
 }
+
+/**
+ * Meat and potatos of parsing below
+*/
 
 Statement* Parser::get_next_statement()
 {

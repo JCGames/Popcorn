@@ -1,6 +1,8 @@
 #include <stdexcept>
 #include "lexer.hpp"
 
+using namespace lex;
+
 Lexer::Lexer(const std::string& fileName)
 {
     _ifs = new std::ifstream(fileName);
