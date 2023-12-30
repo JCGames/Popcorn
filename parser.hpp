@@ -23,6 +23,8 @@ class Parser
     bool is_end_of_statement();
 
     ast::Expression* parse_expression();
+    ast::Statement* parse_condition();
+    ast::Statement* parse_addend();
     ast::Statement* parse_term();
     ast::Statement* parse_equality();
     ast::Statement* parse_factor();

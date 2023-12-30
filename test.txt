@@ -1,8 +1,7 @@
-if 1 == 0
+i = 0
+
+while i < 10
 {
-	printl("hello")
-}
-else 
-{
-	printl("goodbye")
+	printl("Hello")
+	i = i + 1
 }

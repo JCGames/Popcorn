@@ -38,6 +38,8 @@ namespace lex
         ELSE,
         WHILE,
         FOR,
+        AND_CONDITION,
+        OR_CONDITION
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -73,6 +75,8 @@ namespace lex
             case TokenType::ELSE: return "ELSE";
             case TokenType::WHILE: return "WHILE";
             case TokenType::FOR: return "FOR";
+            case TokenType::AND_CONDITION: return "AND CONDITION";
+            case TokenType::OR_CONDITION: return "OR CONDITION";
             default: return "NONE";
         }
     }

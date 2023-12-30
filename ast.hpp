@@ -35,6 +35,8 @@ namespace ast
         ELSE,
         WHILE,
         FOR,
+        AND_CONDITION,
+        OR_CONDITION,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -67,6 +69,8 @@ namespace ast
             case StatementType::ELSE: return "ELSE";
             case StatementType::WHILE: return "WHILE";
             case StatementType::FOR: return "FOR";
+            case StatementType::AND_CONDITION: return "AND CONDITION";
+            case StatementType::OR_CONDITION: return "OR CONDITION";
             default: return "UNDEFINED";
         }
     }
@@ -415,11 +419,11 @@ namespace ast
     {
 
         public:
-            Statement* condition;
+            Expression* condition;
             Block* body;
             Statement* elseOrIf;
 
-            If(Statement* condition, Block* body)
+            If(Expression* condition, Block* body)
             {
                 this->condition = condition;
                 this->body = body;
@@ -438,6 +442,55 @@ namespace ast
             StatementType get_type()
             {
                 return StatementType::IF;
+            }
+    };
+
+    class AndCondition : public BinaryOperator
+    {
+        public:
+            AndCondition(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::AND_CONDITION;
+            }
+    };
+
+    class OrCondition : public BinaryOperator
+    {
+        public:
+            OrCondition(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::OR_CONDITION;
+            }
+    };
+
+    class While : public Statement
+    {
+        public:
+            Expression* condition;
+            Block* body;
+
+            While(Expression* condition, Block* body)
+            {
+                this->condition = condition;
+                this->body = body;
+            }
+
+            ~While()
+            {
+                if (condition != nullptr)
+                    delete condition;
+
+                if (body != nullptr)
+                    delete body;
+            }
+
+            StatementType get_type()
+            {
+                return StatementType::WHILE;
             }
     };
 
@@ -512,6 +565,8 @@ namespace ast
                     case StatementType::LESS_THAN_OPERATOR:
                     case StatementType::GREATER_THAN_EQUALS_OPERATOR:
                     case StatementType::LESS_THAN_EQUALS_OPERATOR:
+                    case StatementType::AND_CONDITION:
+                    case StatementType::OR_CONDITION:
                         printf("%sLEFT:\n", indent.c_str());
                         if (BinaryOperator* value = static_cast<BinaryOperator*>(statement))
                             print_statement(value->left, indent + '\t');
@@ -595,6 +650,15 @@ namespace ast
                     case StatementType::ELSE:
                         if (Else* x = static_cast<Else*>(statement))
                         {
+                            printf("%sBODY:\n", indent.c_str());
+                            print_statement(x->body, indent + '\t');
+                        }
+                        break;
+                    case StatementType::WHILE:
+                        if (While* x = static_cast<While*>(statement))
+                        {
+                            printf("%sCONDITION:\n", indent.c_str());
+                            print_statement(x->condition, indent + '\t');
                             printf("%sBODY:\n", indent.c_str());
                             print_statement(x->body, indent + '\t');
                         }

@@ -281,6 +281,39 @@ Object Runner::interpret(ast::Statement* stat)
                 interpret(x->body);
             }
             break;
+        case ast::StatementType::AND_CONDITION:
+            if (ast::AndCondition* andCondition = static_cast<ast::AndCondition*>(stat))
+            {
+                Object left = interpret(andCondition->left);
+                Object right = interpret(andCondition->right);
+
+                return Object((left.get_type() == ObjectType::BOOLEAN && left.get_bool()) &&
+                            (left.get_type() == ObjectType::BOOLEAN && right.get_bool()));
+            }
+            break;
+        case ast::StatementType::OR_CONDITION:
+            if (ast::OrCondition* orCondition = static_cast<ast::OrCondition*>(stat))
+            {
+                Object left = interpret(orCondition->left);
+                Object right = interpret(orCondition->right);
+
+                return Object((left.get_type() == ObjectType::BOOLEAN && left.get_bool()) ||
+                            (left.get_type() == ObjectType::BOOLEAN && right.get_bool()));
+            }
+            break;
+        case ast::StatementType::WHILE:
+            if (ast::While* x = static_cast<ast::While*>(stat))
+            {
+                Object result = interpret(x->condition);
+
+                while (result.get_type() == ObjectType::BOOLEAN && result.get_bool())
+                {
+                    interpret(x->body);
+                    result = interpret(x->condition);
+                }
+                
+            }
+            break;
     }
 
     return Object();

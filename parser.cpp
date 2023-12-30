@@ -101,7 +101,83 @@ bool Parser::is_end_of_statement()
 /// @brief Ends on the next non-whitespace token.
 Expression* Parser::parse_expression()
 {
-    Expression* expression = new Expression(NULL);
+    return new Expression(parse_condition());
+}
+
+Statement* Parser::parse_condition()
+{
+    Statement* left = parse_equality();
+
+    while (_currentToken.type == TokenType::AND_CONDITION || _currentToken.type == TokenType::OR_CONDITION)
+    {
+        if (_currentToken.type == TokenType::AND_CONDITION)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_equality();
+            left = new AndCondition(left, right);
+        }
+        else if (_currentToken.type == TokenType::OR_CONDITION)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_equality();
+            left = new OrCondition(left, right);
+        }
+    }
+
+    return left;
+}
+
+Statement* Parser::parse_equality()
+{
+    Statement* left = parse_addend();
+
+    while (_currentToken.type == TokenType::EQUALS || _currentToken.type == TokenType::NOT_EQUALS ||
+            _currentToken.type == TokenType::GREATER_THAN || _currentToken.type == TokenType::LESS_THAN ||
+            _currentToken.type == TokenType::GREATER_THAN_EQUALS || _currentToken.type == TokenType::LESS_THAN_EQUALS)
+    {
+        if (_currentToken.type == TokenType::EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new EqualsOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::NOT_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new NotEqualsOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::GREATER_THAN)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new GreaterThanOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::LESS_THAN)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new LessThanOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::GREATER_THAN_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new GreaterThanEqualsOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::LESS_THAN_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_addend();
+            left = new LessThanEqualsOperator(left, right);
+        }
+    }
+
+    return left;
+}
+
+Statement* Parser::parse_addend()
+{
     Statement* left = parse_term();
 
     while (_currentToken.type == TokenType::ADD || _currentToken.type == TokenType::SUB)
@@ -119,77 +195,27 @@ Expression* Parser::parse_expression()
             left = new SubtractOperator(left, right);
         }
     }
-    
-    expression->root = left;
-    return expression;
+
+    return left;
 }
 
 Statement* Parser::parse_term()
 {
-    Statement* left = parse_equality();
+    Statement* left = parse_factor();
 
     while (_currentToken.type == TokenType::MUL || _currentToken.type == TokenType::DIV)
     {
         if (_currentToken.type == TokenType::MUL)
         {
             move_next_non_wspace();
-            Statement* right = parse_equality();
+            Statement* right = parse_factor();
             left = new MultiplyOperator(left, right);
         }
         else if (_currentToken.type == TokenType::DIV)
         {
             move_next_non_wspace();
-            Statement* right = parse_equality();
+            Statement* right = parse_factor();
             left = new DivideOperator(left, right);
-        }
-    }
-
-    return left;
-}
-
-Statement* Parser::parse_equality()
-{
-    Statement* left = parse_factor();
-
-    while (_currentToken.type == TokenType::EQUALS || _currentToken.type == TokenType::NOT_EQUALS ||
-            _currentToken.type == TokenType::GREATER_THAN || _currentToken.type == TokenType::LESS_THAN ||
-            _currentToken.type == TokenType::GREATER_THAN_EQUALS || _currentToken.type == TokenType::LESS_THAN_EQUALS)
-    {
-        if (_currentToken.type == TokenType::EQUALS)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new EqualsOperator(left, right);
-        }
-        else if (_currentToken.type == TokenType::NOT_EQUALS)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new NotEqualsOperator(left, right);
-        }
-        else if (_currentToken.type == TokenType::GREATER_THAN)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new GreaterThanOperator(left, right);
-        }
-        else if (_currentToken.type == TokenType::LESS_THAN)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new LessThanOperator(left, right);
-        }
-        else if (_currentToken.type == TokenType::GREATER_THAN_EQUALS)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new GreaterThanEqualsOperator(left, right);
-        }
-        else if (_currentToken.type == TokenType::LESS_THAN_EQUALS)
-        {
-            move_next_non_wspace();
-            Statement* right = parse_factor();
-            left = new LessThanEqualsOperator(left, right);
         }
     }
 
@@ -258,11 +284,15 @@ Statement* Parser::parse_factor()
     return result;
 }
 
+/**
+ * Statements
+*/
+
 If* Parser::parse_if()
 {
     move_next_non_wspace();
 
-    Statement* condition = parse_expression();
+    Expression* condition = parse_expression();
 
     if (is_end_of_statement())
         move_next_non_wspace_pass_eols();
@@ -364,6 +394,25 @@ Statement* Parser::get_next_statement()
     else if (_currentToken.type == TokenType::IF)
     {
         return parse_if();
+    }
+    // WHILE STATEMENT
+    else if (_currentToken.type == TokenType::WHILE)
+    {
+        move_next_non_wspace();
+
+        Expression* condition = parse_expression();
+
+        if (is_end_of_statement())
+            move_next_non_wspace_pass_eols();
+
+        if (_currentToken.type == TokenType::OPEN_BRACKET)
+        {
+            Block* body = get_block();
+            move_next_non_wspace_pass_eols();
+
+            return new While(condition, body);
+        }
+        else throw std::runtime_error("Could not find body for while statement on line: " + std::to_string(_currentToken.lineNumber));
     }
 
     return NULL;

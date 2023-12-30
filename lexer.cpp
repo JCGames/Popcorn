@@ -119,6 +119,19 @@ Token Lexer::get_next_token()
 
         return { TokenType::STRING, value, _currentLineNumber };
     }
+    // TRUTH CONDITIONS
+    else if (_current == '&' && peek_next() == '&')
+    {
+        get_next();
+        get_next();
+        return { TokenType::AND_CONDITION, "", _currentLineNumber };
+    }
+    else if (_current == '|' && peek_next() == '|')
+    {
+        get_next();
+        get_next();
+        return { TokenType::OR_CONDITION, "", _currentLineNumber };
+    }
     // TRUTH OPERATORS
     else if (_current == '=' && peek_next() == '=')
     {
