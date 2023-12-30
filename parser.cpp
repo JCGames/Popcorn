@@ -316,7 +316,25 @@ Statement* Parser::get_next_statement()
     {
         move_next_non_wspace();
 
-        Statement* condition = parse_factor();
+        Statement* condition = parse_expression();
+
+        if (is_end_of_statement())
+            move_next_non_wspace_pass_eols();
+
+        if (_currentToken.type == TokenType::OPEN_BRACKET)
+        {
+            move_next();
+
+            Block* body = get_block();
+
+            move_next_line();
+
+            return new If(condition, body);
+        }
+        else
+        {
+            throw std::runtime_error("Could not find body for if statement on line: " + std::to_string(_currentToken.lineNumber));
+        }
     }
 
     return NULL;
@@ -370,7 +388,7 @@ Block* Parser::get_block()
     }
 
     if (_currentToken.type != TokenType::CLOSED_BRACKET)
-        throw std::runtime_error("Body was not closed correctly on line: " + std::to_string(_currentToken.lineNumber));
+        throw std::runtime_error("Body was not closed correctly on line: " + std::to_string(_currentToken.lineNumber) + "\nToken found was: " + get_token_type_name(_currentToken.type).c_str());
 
     return result;
 }

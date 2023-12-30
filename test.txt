@@ -1,0 +1,8 @@
+print("Please enter your password: ")
+
+x = input()
+
+if (x == "6321")
+{
+    printl("Welcome Christian Marcellino!");
+}

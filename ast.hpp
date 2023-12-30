@@ -413,6 +413,34 @@ namespace ast
             }
     };
 
+    class If : public Statement
+    {
+
+        public:
+            Statement* condition;
+            Block* body;
+
+            If(Statement* condition, Block* body)
+            {
+                this->condition = condition;
+                this->body = body;
+            }
+
+            ~If() override
+            {
+                if (condition != nullptr)
+                    delete condition;
+
+                if (body != nullptr)
+                    delete body;
+            }
+
+            StatementType get_type()
+            {
+                return StatementType::IF;
+            }
+    };
+
     class AST
     {
         public:
@@ -525,6 +553,15 @@ namespace ast
                             {
                                 printf("%sFALSE\n", indent.c_str());
                             }
+                        }
+                        break;
+                    case StatementType::IF:
+                        if (If* x = static_cast<If*>(statement))
+                        {
+                            printf("%sCONDITION:\n", indent.c_str());
+                            print_statement(x->condition, indent + '\t');
+                            printf("%sBODY:\n", indent.c_str());
+                            print_statement(x->body, indent + '\t');
                         }
                         break;
                 }

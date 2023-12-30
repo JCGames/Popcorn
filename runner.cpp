@@ -253,6 +253,24 @@ Object Runner::interpret(ast::Statement* stat)
                 return left.less_than_equals(right);
             }
             break;
+        case ast::StatementType::BLOCK:
+            if (ast::Block* block = static_cast<ast::Block*>(stat))
+            {
+                for (auto& s : block->statements)
+                    interpret(s);
+            }
+            break;
+        case ast::StatementType::IF:
+            if (ast::If* x = static_cast<ast::If*>(stat))
+            {
+                Object result = interpret(x->condition);
+
+                if (result.get_type() == ObjectType::BOOLEAN && result.get_bool() == true)
+                {
+                    interpret(x->body);
+                }
+            }
+            break;
     }
 
     return Object();
