@@ -27,6 +27,9 @@ class Parser
     ast::Statement* parse_equality();
     ast::Statement* parse_factor();
 
+    ast::If* parse_if();
+    ast::Else* parse_else();
+
     ast::Statement* get_next_statement();
     ast::FunctionCall* parse_function_call();
     ast::Block* get_block();

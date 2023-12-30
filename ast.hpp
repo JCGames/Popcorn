@@ -33,7 +33,6 @@ namespace ast
         LESS_THAN_EQUALS_OPERATOR,
         IF,
         ELSE,
-        ELSE_IF,
         WHILE,
         FOR,
     };
@@ -66,7 +65,6 @@ namespace ast
             case StatementType::LESS_THAN_EQUALS_OPERATOR: return "LESS THAN EQUALS OPERATOR";
             case StatementType::IF: return "IF";
             case StatementType::ELSE: return "ELSE";
-            case StatementType::ELSE_IF: return "ELSE IF";
             case StatementType::WHILE: return "WHILE";
             case StatementType::FOR: return "FOR";
             default: return "UNDEFINED";
@@ -419,11 +417,13 @@ namespace ast
         public:
             Statement* condition;
             Block* body;
+            Statement* elseOrIf;
 
             If(Statement* condition, Block* body)
             {
                 this->condition = condition;
                 this->body = body;
+                this->elseOrIf = nullptr;
             }
 
             ~If() override
@@ -438,6 +438,28 @@ namespace ast
             StatementType get_type()
             {
                 return StatementType::IF;
+            }
+    };
+
+    class Else : public Statement
+    {
+        public:
+            Block* body;
+
+            Else(Block* body)
+            {
+                this->body = body;
+            }
+
+            ~Else() override
+            {
+                if (body != nullptr)
+                    delete body;
+            }
+
+            StatementType get_type()
+            {
+                return StatementType::ELSE;
             }
     };
 
@@ -560,6 +582,19 @@ namespace ast
                         {
                             printf("%sCONDITION:\n", indent.c_str());
                             print_statement(x->condition, indent + '\t');
+                            printf("%sBODY:\n", indent.c_str());
+                            print_statement(x->body, indent + '\t');
+
+                            if (x->elseOrIf != nullptr)
+                            {
+                                printf("%sCHILD STATEMENT:\n", indent.c_str());
+                                print_statement(x->elseOrIf, indent + '\t');
+                            }
+                        }
+                        break;
+                    case StatementType::ELSE:
+                        if (Else* x = static_cast<Else*>(statement))
+                        {
                             printf("%sBODY:\n", indent.c_str());
                             print_statement(x->body, indent + '\t');
                         }

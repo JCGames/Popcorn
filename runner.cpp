@@ -269,6 +269,16 @@ Object Runner::interpret(ast::Statement* stat)
                 {
                     interpret(x->body);
                 }
+                else if (x->elseOrIf != nullptr)
+                {
+                    interpret(x->elseOrIf);
+                }
+            }
+            break;
+        case ast::StatementType::ELSE:
+            if (ast::Else* x = static_cast<ast::Else*>(stat))
+            {
+                interpret(x->body);
             }
             break;
     }

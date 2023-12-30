@@ -1,8 +1,8 @@
-print("Please enter your password: ")
-
-x = input()
-
-if (x == "6321")
+if 1 == 0
 {
-    printl("Welcome Christian Marcellino!");
+	printl("hello")
+}
+else 
+{
+	printl("goodbye")
 }

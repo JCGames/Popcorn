@@ -200,6 +200,7 @@ Statement* Parser::parse_factor()
 {
     Statement* result = NULL;
 
+    // PARSE AN EXPRESSION
     if (_currentToken.type == TokenType::OPEN_PARAN)
     {
         move_next_non_wspace();
@@ -209,6 +210,7 @@ Statement* Parser::parse_factor()
         if (_currentToken.type != TokenType::CLOSE_PARAN)
             throw std::runtime_error("Missing a closed paranthesis on line: " + std::to_string(_currentToken.lineNumber));
     }
+    // FUNCTION CALLS
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::OPEN_PARAN)
     {
         result = parse_function_call();
@@ -239,12 +241,12 @@ Statement* Parser::parse_factor()
     // NEGATE
     else if (_currentToken.type == TokenType::SUB)
     {
-        move_next_non_wspace();
-        return new Negate(parse_factor());
+        result = new Negate(parse_factor());
     }
+    // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
     {
-        return new Boolean(_currentToken.value == "true" ? true : false);
+        result = new Boolean(_currentToken.value == "true" ? true : false);
     }
     // ERROR
     else
@@ -254,6 +256,53 @@ Statement* Parser::parse_factor()
 
     move_next_non_wspace();
     return result;
+}
+
+If* Parser::parse_if()
+{
+    move_next_non_wspace();
+
+    Statement* condition = parse_expression();
+
+    if (is_end_of_statement())
+        move_next_non_wspace_pass_eols();
+
+    if (_currentToken.type == TokenType::OPEN_BRACKET)
+    {
+        Block* body = get_block();
+        move_next_non_wspace_pass_eols();
+
+        If* result = new If(condition, body);
+
+        // ELSE IF CASE
+        if (_currentToken.type == TokenType::ELSE && peek_next_non_wspace().type == TokenType::IF)
+        {
+            move_next_non_wspace();
+            result->elseOrIf = parse_if();
+        }
+        // ELSE CASE
+        else if (_currentToken.type == TokenType::ELSE)
+        {
+            result->elseOrIf = parse_else();
+        }
+
+        return result;
+    }
+    else throw std::runtime_error("Could not find body for if statement on line: " + std::to_string(_currentToken.lineNumber));
+}
+
+Else* Parser::parse_else()
+{
+    move_next_non_wspace_pass_eols();
+
+    if (_currentToken.type == TokenType::OPEN_BRACKET)
+    {
+        Block* body = get_block();
+        move_next_non_wspace_pass_eols();
+
+        return new Else(body);
+    }
+    else throw std::runtime_error("Could not find body for else statement on line: " + std::to_string(_currentToken.lineNumber));
 }
 
 /**
@@ -314,27 +363,7 @@ Statement* Parser::get_next_statement()
     // IF STATEMENT
     else if (_currentToken.type == TokenType::IF)
     {
-        move_next_non_wspace();
-
-        Statement* condition = parse_expression();
-
-        if (is_end_of_statement())
-            move_next_non_wspace_pass_eols();
-
-        if (_currentToken.type == TokenType::OPEN_BRACKET)
-        {
-            move_next();
-
-            Block* body = get_block();
-
-            move_next_line();
-
-            return new If(condition, body);
-        }
-        else
-        {
-            throw std::runtime_error("Could not find body for if statement on line: " + std::to_string(_currentToken.lineNumber));
-        }
+        return parse_if();
     }
 
     return NULL;
@@ -372,6 +401,9 @@ Block* Parser::get_block()
 {
     Block* result = new Block();
 
+    if (_currentToken.type == TokenType::OPEN_BRACKET)
+        move_next();
+    
     int lastIndex = _index - 1;
 
     while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
