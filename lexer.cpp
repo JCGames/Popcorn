@@ -90,6 +90,14 @@ Token Lexer::get_next_token()
 
         if (value == "true" || value == "false")
             return { TokenType::BOOLEAN, value, _currentLineNumber };
+        else if (value == "if")
+            return { TokenType::IF, value, _currentLineNumber };
+        else if (value == "else")
+            return { TokenType::ELSE, value, _currentLineNumber };
+        else if (value == "while")
+            return { TokenType::WHILE, value, _currentLineNumber };
+        else if (value == "FOR")
+            return { TokenType::FOR, value, _currentLineNumber };
 
         return { TokenType::WORD, value, _currentLineNumber };
     }
@@ -118,7 +126,35 @@ Token Lexer::get_next_token()
         get_next();
         return { TokenType::EQUALS, "", _currentLineNumber };
     }
+    else if (_current == '>' && peek_next() == '=')
+    {
+        get_next();
+        get_next();
+        return { TokenType::GREATER_THAN_EQUALS, "", _currentLineNumber };
+    }
+    else if (_current == '<' && peek_next() == '=')
+    {
+        get_next();
+        get_next();
+        return { TokenType::LESS_THAN_EQUALS, "", _currentLineNumber };
+    }
+    else if (_current == '!' && peek_next() == '=')
+    {
+        get_next();
+        get_next();
+        return { TokenType::NOT_EQUALS, "", _currentLineNumber };
+    }
     // OPERATORS
+    else if (_current == '>')
+    {
+        get_next();
+        return { TokenType::GREATER_THAN, "", _currentLineNumber };
+    }
+    else if (_current == '<')
+    {
+        get_next();
+        return { TokenType::LESS_THAN, "", _currentLineNumber };
+    }
     else if (_current == '+')
     {
         get_next();

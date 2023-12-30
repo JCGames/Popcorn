@@ -28,7 +28,16 @@ namespace lex
         COMMA,
         COMMENT,
         BOOLEAN,
-        EQUALS
+        EQUALS,
+        NOT_EQUALS,
+        GREATER_THAN,
+        LESS_THAN,
+        GREATER_THAN_EQUALS,
+        LESS_THAN_EQUALS,
+        IF,
+        ELSE,
+        WHILE,
+        FOR,
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -55,6 +64,15 @@ namespace lex
             case TokenType::COMMENT: return "COMMENT";
             case TokenType::BOOLEAN: return "BOOLEAN";
             case TokenType::EQUALS: return "EQUALS";
+            case TokenType::NOT_EQUALS: return "NOT EQUALS";
+            case TokenType::GREATER_THAN: return "GREATER THAN";
+            case TokenType::LESS_THAN: return "LESS THAN";
+            case TokenType::GREATER_THAN_EQUALS: return "GREATER THAN EQUALS";
+            case TokenType::LESS_THAN_EQUALS: return "LESS THAN EQUALS";
+            case TokenType::IF: return "IF";
+            case TokenType::ELSE: return "ELSE";
+            case TokenType::WHILE: return "WHILE";
+            case TokenType::FOR: return "FOR";
             default: return "NONE";
         }
     }

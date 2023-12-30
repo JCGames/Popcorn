@@ -62,6 +62,7 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
 
         std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str();
     }
+    // PRINT LINE FUNCTION
     else if (funcCall->functionName == "printl")
     {
         if (funcCall->parameterList.size() != 1)
@@ -93,6 +94,7 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
         
         return interpret(funcCall->parameterList[0]).cast_to_double();
     }
+    // GET LINE FUNCTION
     else if (funcCall->functionName == "input")
     {
         if (funcCall->parameterList.size() != 0)
@@ -204,6 +206,51 @@ Object Runner::interpret(ast::Statement* stat)
                 Object right = interpret(equalsOperator->right);
 
                 return left.equals(right);
+            }
+            break;
+        case ast::StatementType::NOT_EQUALS_OPERATOR:
+            if (ast::NotEqualsOperator* notEqualsOperator = static_cast<ast::NotEqualsOperator*>(stat))
+            {
+                Object left = interpret(notEqualsOperator->left);
+                Object right = interpret(notEqualsOperator->right);
+
+                return left.not_equals(right);
+            }
+            break;
+        case ast::StatementType::GREATER_THAN_OPERATOR:
+            if (ast::GreaterThanOperator* greaterThanOperator = static_cast<ast::GreaterThanOperator*>(stat))
+            {
+                Object left = interpret(greaterThanOperator->left);
+                Object right = interpret(greaterThanOperator->right);
+
+                return left.greater_than(right);
+            }
+            break;
+        case ast::StatementType::LESS_THAN_OPERATOR:
+            if (ast::LessThanOperator* lessThanOperator = static_cast<ast::LessThanOperator*>(stat))
+            {
+                Object left = interpret(lessThanOperator->left);
+                Object right = interpret(lessThanOperator->right);
+
+                return left.less_than(right);
+            }
+            break;
+        case ast::StatementType::GREATER_THAN_EQUALS_OPERATOR:
+            if (ast::GreaterThanEqualsOperator* greaterThanEqualsOperator = static_cast<ast::GreaterThanEqualsOperator*>(stat))
+            {
+                Object left = interpret(greaterThanEqualsOperator->left);
+                Object right = interpret(greaterThanEqualsOperator->right);
+
+                return left.greater_than_equals(right);
+            }
+            break;
+        case ast::StatementType::LESS_THAN_EQUALS_OPERATOR:
+            if (ast::LessThanEqualsOperator* lessThanEqualsOperator = static_cast<ast::LessThanEqualsOperator*>(stat))
+            {
+                Object left = interpret(lessThanEqualsOperator->left);
+                Object right = interpret(lessThanEqualsOperator->right);
+
+                return left.less_than_equals(right);
             }
             break;
     }

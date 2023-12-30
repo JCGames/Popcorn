@@ -26,6 +26,16 @@ namespace ast
         NEGATE,
         BOOLEAN,
         EQUALS_OPERATOR,
+        NOT_EQUALS_OPERATOR,
+        GREATER_THAN_OPERATOR,
+        LESS_THAN_OPERATOR,
+        GREATER_THAN_EQUALS_OPERATOR,
+        LESS_THAN_EQUALS_OPERATOR,
+        IF,
+        ELSE,
+        ELSE_IF,
+        WHILE,
+        FOR,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -49,6 +59,16 @@ namespace ast
             case StatementType::NEGATE: return "NEGATE";
             case StatementType::BOOLEAN: return "BOOLEAN";
             case StatementType::EQUALS_OPERATOR: return "EQUALS OPERATOR";
+            case StatementType::NOT_EQUALS_OPERATOR: return "NOT EQUALS OPERATOR";
+            case StatementType::GREATER_THAN_OPERATOR: return "GREATER THAN OPERATOR";
+            case StatementType::LESS_THAN_OPERATOR: return "LESS THAN OPERATOR";
+            case StatementType::GREATER_THAN_EQUALS_OPERATOR: return "GREATER THAN EQUALS OPERATOR";
+            case StatementType::LESS_THAN_EQUALS_OPERATOR: return "LESS THAN EQUALS OPERATOR";
+            case StatementType::IF: return "IF";
+            case StatementType::ELSE: return "ELSE";
+            case StatementType::ELSE_IF: return "ELSE IF";
+            case StatementType::WHILE: return "WHILE";
+            case StatementType::FOR: return "FOR";
             default: return "UNDEFINED";
         }
     }
@@ -338,6 +358,61 @@ namespace ast
             }
     };
 
+    class NotEqualsOperator : public BinaryOperator
+    {
+        public:
+            NotEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::NOT_EQUALS_OPERATOR;
+            }
+    };
+
+    class GreaterThanOperator : public BinaryOperator
+    {
+        public:
+            GreaterThanOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::GREATER_THAN_OPERATOR;
+            }
+    };
+
+    class LessThanOperator : public BinaryOperator
+    {
+        public:
+            LessThanOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::LESS_THAN_OPERATOR;
+            }
+    };
+
+    class GreaterThanEqualsOperator : public BinaryOperator
+    {
+        public:
+            GreaterThanEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::GREATER_THAN_EQUALS_OPERATOR;
+            }
+    };
+
+    class LessThanEqualsOperator : public BinaryOperator
+    {
+        public:
+            LessThanEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::LESS_THAN_EQUALS_OPERATOR;
+            }
+    };
+
     class AST
     {
         public:
@@ -382,6 +457,11 @@ namespace ast
                     case StatementType::DIV_OPERATOR:
                     case StatementType::MUL_OPERATOR:
                     case StatementType::EQUALS_OPERATOR:
+                    case StatementType::NOT_EQUALS_OPERATOR:
+                    case StatementType::GREATER_THAN_OPERATOR:
+                    case StatementType::LESS_THAN_OPERATOR:
+                    case StatementType::GREATER_THAN_EQUALS_OPERATOR:
+                    case StatementType::LESS_THAN_EQUALS_OPERATOR:
                         printf("%sLEFT:\n", indent.c_str());
                         if (BinaryOperator* value = static_cast<BinaryOperator*>(statement))
                             print_statement(value->left, indent + '\t');

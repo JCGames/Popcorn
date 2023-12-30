@@ -1,3 +1,0 @@
-print("Input: ")
-x = input()
-printl("Your name is " + x)

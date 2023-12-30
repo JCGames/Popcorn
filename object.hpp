@@ -70,6 +70,11 @@ namespace run
             Object divided_by(Object obj);
             Object negate();
             Object equals(Object obj);
+            Object not_equals(Object obj);
+            Object greater_than(Object obj);
+            Object less_than(Object obj);
+            Object greater_than_equals(Object obj);
+            Object less_than_equals(Object obj);
     };
 }
 

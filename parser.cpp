@@ -151,7 +151,9 @@ Statement* Parser::parse_equality()
 {
     Statement* left = parse_factor();
 
-    while (_currentToken.type == TokenType::EQUALS)
+    while (_currentToken.type == TokenType::EQUALS || _currentToken.type == TokenType::NOT_EQUALS ||
+            _currentToken.type == TokenType::GREATER_THAN || _currentToken.type == TokenType::LESS_THAN ||
+            _currentToken.type == TokenType::GREATER_THAN_EQUALS || _currentToken.type == TokenType::LESS_THAN_EQUALS)
     {
         if (_currentToken.type == TokenType::EQUALS)
         {
@@ -159,11 +161,40 @@ Statement* Parser::parse_equality()
             Statement* right = parse_factor();
             left = new EqualsOperator(left, right);
         }
+        else if (_currentToken.type == TokenType::NOT_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new NotEqualsOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::GREATER_THAN)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new GreaterThanOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::LESS_THAN)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new LessThanOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::GREATER_THAN_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new GreaterThanEqualsOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::LESS_THAN_EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new LessThanEqualsOperator(left, right);
+        }
     }
 
     return left;
 }
-
 
 Statement* Parser::parse_factor()
 {
@@ -279,6 +310,13 @@ Statement* Parser::get_next_statement()
         move_next_line();
 
         return funcCall;
+    }
+    // IF STATEMENT
+    else if (_currentToken.type == TokenType::IF)
+    {
+        move_next_non_wspace();
+
+        Statement* condition = parse_factor();
     }
 
     return NULL;
