@@ -111,6 +111,13 @@ Token Lexer::get_next_token()
 
         return { TokenType::STRING, value, _currentLineNumber };
     }
+    // TRUTH OPERATORS
+    else if (_current == '=' && peek_next() == '=')
+    {
+        get_next();
+        get_next();
+        return { TokenType::EQUALS, "", _currentLineNumber };
+    }
     // OPERATORS
     else if (_current == '+')
     {

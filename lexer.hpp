@@ -27,7 +27,8 @@ namespace lex
         CLOSE_PARAN,
         COMMA,
         COMMENT,
-        BOOLEAN
+        BOOLEAN,
+        EQUALS
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -53,6 +54,7 @@ namespace lex
             case TokenType::COMMA: return "COMMA";
             case TokenType::COMMENT: return "COMMENT";
             case TokenType::BOOLEAN: return "BOOLEAN";
+            case TokenType::EQUALS: return "EQUALS";
             default: return "NONE";
         }
     }

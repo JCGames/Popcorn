@@ -24,6 +24,7 @@ class Parser
 
     ast::Expression* parse_expression();
     ast::Statement* parse_term();
+    ast::Statement* parse_equality();
     ast::Statement* parse_factor();
 
     ast::Statement* get_next_statement();

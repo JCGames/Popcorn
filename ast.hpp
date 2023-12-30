@@ -25,6 +25,7 @@ namespace ast
         FUNCTION_CALL,
         NEGATE,
         BOOLEAN,
+        EQUALS_OPERATOR,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -47,6 +48,7 @@ namespace ast
             case StatementType::FUNCTION_CALL: return "FUNCTION CALL";
             case StatementType::NEGATE: return "NEGATE";
             case StatementType::BOOLEAN: return "BOOLEAN";
+            case StatementType::EQUALS_OPERATOR: return "EQUALS OPERATOR";
             default: return "UNDEFINED";
         }
     }
@@ -325,6 +327,17 @@ namespace ast
             }
     };
 
+    class EqualsOperator : public BinaryOperator
+    {
+        public:
+            EqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::EQUALS_OPERATOR;
+            }
+    };
+
     class AST
     {
         public:
@@ -368,6 +381,7 @@ namespace ast
                     case StatementType::SUB_OPERATOR:
                     case StatementType::DIV_OPERATOR:
                     case StatementType::MUL_OPERATOR:
+                    case StatementType::EQUALS_OPERATOR:
                         printf("%sLEFT:\n", indent.c_str());
                         if (BinaryOperator* value = static_cast<BinaryOperator*>(statement))
                             print_statement(value->left, indent + '\t');
@@ -418,6 +432,19 @@ namespace ast
                         if (Negate* negate = static_cast<Negate*>(statement))
                         {
                             print_statement(negate->value, indent + '\t');
+                        }
+                        break;
+                    case StatementType::BOOLEAN:
+                        if (Boolean* b = static_cast<Boolean*>(statement))
+                        {
+                            if (b->value)
+                            {
+                                printf("%sTRUE\n", indent.c_str());
+                            }
+                            else
+                            {
+                                printf("%sFALSE\n", indent.c_str());
+                            }
                         }
                         break;
                 }

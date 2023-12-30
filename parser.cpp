@@ -126,26 +126,44 @@ Expression* Parser::parse_expression()
 
 Statement* Parser::parse_term()
 {
-    Statement* left = parse_factor();
+    Statement* left = parse_equality();
 
     while (_currentToken.type == TokenType::MUL || _currentToken.type == TokenType::DIV)
     {
         if (_currentToken.type == TokenType::MUL)
         {
             move_next_non_wspace();
-            Statement* right = parse_factor();
+            Statement* right = parse_equality();
             left = new MultiplyOperator(left, right);
         }
         else if (_currentToken.type == TokenType::DIV)
         {
             move_next_non_wspace();
-            Statement* right = parse_factor();
+            Statement* right = parse_equality();
             left = new DivideOperator(left, right);
         }
     }
 
     return left;
 }
+
+Statement* Parser::parse_equality()
+{
+    Statement* left = parse_factor();
+
+    while (_currentToken.type == TokenType::EQUALS)
+    {
+        if (_currentToken.type == TokenType::EQUALS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new EqualsOperator(left, right);
+        }
+    }
+
+    return left;
+}
+
 
 Statement* Parser::parse_factor()
 {

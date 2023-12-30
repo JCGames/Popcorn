@@ -61,7 +61,7 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
         if (funcCall->parameterList.size() != 1)
             throw std::runtime_error("Function [print] only takes one argument!");
 
-        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().strValue << std::endl;
+        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str() << std::endl;
     }
     // CAST TO INT FUNCTION
     else if (funcCall->functionName == "int")

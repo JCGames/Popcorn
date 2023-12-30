@@ -14,7 +14,7 @@ enum class ObjectType
     INTEGER,
     DOUBLE,
     STRING,
-    NULL_OBJ
+    _NULL
 };
 
 class Object
@@ -22,38 +22,141 @@ class Object
     ObjectType type;
 
     public:
-        bool boolValue;
-        int intValue;
-        double doubleValue;
-        std::string strValue;
+        void* value;
 
         Object()
         {
-            type = ObjectType::NULL_OBJ;
+            type = ObjectType::_NULL;
+            value = NULL;
         }
 
         Object(std::string strValue)
         {
             this->type = ObjectType::STRING;
-            this->strValue = strValue;
+            this->value = new std::string(strValue);
         }
 
         Object(bool boolValue)
         {
             this->type = ObjectType::BOOLEAN;
-            this->boolValue = boolValue;
+            this->value = new bool(boolValue);
         }
 
         Object(int intValue)
         {
             this->type = ObjectType::INTEGER;
-            this->intValue = intValue;
+            this->value = new int(intValue);
         }
 
         Object(double doubleValue)
         {
             this->type = ObjectType::DOUBLE;
-            this->doubleValue = doubleValue;
+            this->value = new double(doubleValue);
+        }
+
+        // TODO: work on using only one value to represent all values.
+
+        Object(const Object& other)
+        {
+            switch (type)
+            {
+                case ObjectType::BOOLEAN:
+                    value = new bool(*static_cast<bool*>(value));
+                    break;
+                case ObjectType::INTEGER:
+                    value = new int(*static_cast<int*>(value));
+                    break;
+                case ObjectType::DOUBLE:
+                    value = new double(*static_cast<double*>(value));
+                    break;
+                case ObjectType::STRING:
+                    value = new std::string(*static_cast<std::string*>(value));
+                    break;
+            }
+        }
+
+        Object& operator=(const Object& other) 
+        {
+            if (this != &other)
+            {
+                if (value != nullptr)
+                {
+                    switch (type)
+                    {
+                        case ObjectType::BOOLEAN:
+                            delete static_cast<bool*>(value);
+                            break;
+                        case ObjectType::INTEGER:
+                            delete static_cast<int*>(value);
+                            break;
+                        case ObjectType::DOUBLE:
+                            delete static_cast<double*>(value);
+                            break;
+                        case ObjectType::STRING:
+                            delete static_cast<std::string*>(value);
+                            break;
+                    }
+                }
+
+                switch (type)
+                {
+                    case ObjectType::BOOLEAN:
+                        value = new bool(*static_cast<bool*>(value));
+                        break;
+                    case ObjectType::INTEGER:
+                        value = new int(*static_cast<int*>(value));
+                        break;
+                    case ObjectType::DOUBLE:
+                        value = new double(*static_cast<double*>(value));
+                        break;
+                    case ObjectType::STRING:
+                        value = new std::string(*static_cast<std::string*>(value));
+                        break;
+                }
+            }
+
+            return *this;
+        }
+
+        ~Object()
+        {
+            if (value == nullptr) return;
+
+            switch (type)
+            {
+                case ObjectType::BOOLEAN:
+                    delete static_cast<bool*>(value);
+                    break;
+                case ObjectType::INTEGER:
+                    delete static_cast<int*>(value);
+                    break;
+                case ObjectType::DOUBLE:
+                    delete static_cast<double*>(value);
+                    break;
+                case ObjectType::STRING:
+                    delete static_cast<std::string*>(value);
+                    break;
+            }
+        }
+
+        bool get_bool()
+        {
+            return *(bool*)value;
+        }
+
+        int get_int()
+        {
+            return *(int*)value;
+        }
+
+        double get_double()
+        {
+            return *(double*)value;
+        }
+
+        std::string get_str()
+        {
+            return *(std::string*)value;
         }
 
         Object cast_to_bool()
@@ -61,15 +164,15 @@ class Object
             switch (type)
             {
                 case ObjectType::STRING:
-                    return Object((strValue == "True" || strValue == "true") ? true : 
-                        ((strValue == "False" || strValue == "false") ? false : 
+                    return Object((get_str() == "True" || get_str() == "true") ? true : 
+                        ((get_str() == "False" || get_str() == "false") ? false : 
                         throw std::runtime_error("Could not parse string into a boolean value!")));
                 case ObjectType::BOOLEAN:
-                    return Object(boolValue);
+                    return Object(get_bool());
                 case ObjectType::INTEGER:
-                    return Object((bool)intValue);
+                    return Object((bool)get_int());
                 case ObjectType::DOUBLE:
-                    return Object((bool)doubleValue);
+                    return Object((bool)get_double());
             }
 
             return Object();
@@ -80,17 +183,17 @@ class Object
             switch (type)
             {
                 case ObjectType::BOOLEAN:
-                    return Object((int)boolValue);
+                    return Object((int)get_bool());
                 case ObjectType::INTEGER:
-                    return Object(intValue);
+                    return Object(get_int());
                 case ObjectType::DOUBLE:
-                    return Object((int)doubleValue);
+                    return Object((int)get_double());
                 case ObjectType::STRING:
                     {
                         int value;
 
                         try {
-                            value = std::stoi(strValue);
+                            value = std::stoi(get_str());
                         } catch (const std::exception& e) {
                             throw std::runtime_error(e.what());
                         }
@@ -108,17 +211,17 @@ class Object
             switch (type)
             {
                 case ObjectType::BOOLEAN:
-                    return Object((double)boolValue);
+                    return Object((double)get_bool());
                 case ObjectType::INTEGER:
-                    return Object((double)intValue);
+                    return Object((double)get_int());
                 case ObjectType::DOUBLE:
-                    return Object(doubleValue);
+                    return Object(get_double());
                 case ObjectType::STRING:
                     {
                         double value;
 
                         try {
-                            value = std::stof(strValue);
+                            value = std::stof(get_str());
                         } catch (const std::exception& e) {
                             throw std::runtime_error(e.what());
                         }
@@ -136,13 +239,13 @@ class Object
             switch (type)
             {
                 case ObjectType::STRING:
-                    return Object(strValue);
+                    return Object(get_str());
                 case ObjectType::BOOLEAN:
-                    return Object((std::string)(boolValue ? "True" : "False"));
+                    return Object((std::string)(get_bool() ? "True" : "False"));
                 case ObjectType::INTEGER:
-                    return Object(std::to_string(intValue));
+                    return Object(std::to_string(get_int()));
                 case ObjectType::DOUBLE:
-                    return Object(std::to_string(doubleValue));
+                    return Object(std::to_string(get_double()));
             }
 
             return Object();
@@ -157,13 +260,13 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(boolValue + obj.boolValue);
+                            return Object(get_bool() + obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(boolValue + obj.intValue);
+                            return Object(get_bool() + obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(boolValue + obj.doubleValue);
+                            return Object(get_bool() + obj.get_double());
                         case ObjectType::STRING:
-                            return Object(cast_to_string().strValue + obj.strValue);
+                            return Object(cast_to_string().get_str() + obj.get_str());
                     }
 
                     break;
@@ -172,13 +275,13 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(intValue + obj.boolValue);
+                            return Object(get_int() + obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(intValue + obj.intValue);
+                            return Object(get_int() + obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(intValue + obj.doubleValue);
+                            return Object(get_int() + obj.get_double());
                         case ObjectType::STRING:
-                            return Object(cast_to_string().strValue + obj.strValue);
+                            return Object(cast_to_string().get_str() + obj.get_str());
                     }
 
                     break;
@@ -187,13 +290,13 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(doubleValue + obj.boolValue);
+                            return Object(get_double() + obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(doubleValue + obj.intValue);
+                            return Object(get_double() + obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(doubleValue + obj.doubleValue);
+                            return Object(get_double() + obj.get_double());
                         case ObjectType::STRING:
-                            return Object(cast_to_string().strValue + obj.strValue);
+                            return Object(cast_to_string().get_str() + obj.get_str());
                     }
 
                     break;
@@ -202,13 +305,13 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(strValue + obj.cast_to_string().strValue);
+                            return Object(get_str() + obj.cast_to_string().get_str());
                         case ObjectType::INTEGER:
-                            return Object(strValue + obj.cast_to_string().strValue);
+                            return Object(get_str() + obj.cast_to_string().get_str());
                         case ObjectType::DOUBLE:
-                            return Object(strValue + obj.cast_to_string().strValue);
+                            return Object(get_str() + obj.cast_to_string().get_str());
                         case ObjectType::STRING:
-                            return Object(strValue + obj.strValue);
+                            return Object(get_str() + obj.get_str());
                     }
 
                     break;
@@ -226,11 +329,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(boolValue - obj.boolValue);
+                            return Object(get_bool() - obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(boolValue - obj.intValue);
+                            return Object(get_bool() - obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(boolValue - obj.doubleValue);
+                            return Object(get_bool() - obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be subtracted by a string!");
                     }
@@ -241,11 +344,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(intValue - obj.boolValue);
+                            return Object(get_int() - obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(intValue - obj.intValue);
+                            return Object(get_int() - obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(intValue - obj.doubleValue);
+                            return Object(get_int() - obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be subtracted by a string!");
                     }
@@ -256,11 +359,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(doubleValue - obj.boolValue);
+                            return Object(get_double() - obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(doubleValue - obj.intValue);
+                            return Object(get_double() - obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(doubleValue - obj.doubleValue);
+                            return Object(get_double() - obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Double cannot be subtracted by a string!");
                     }
@@ -285,11 +388,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(boolValue * obj.boolValue);
+                            return Object(get_bool() * obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(boolValue * obj.intValue);
+                            return Object(get_bool() * obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(boolValue * obj.doubleValue);
+                            return Object(get_bool() * obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be multiplied by a string!");
                     }
@@ -300,11 +403,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(intValue * obj.boolValue);
+                            return Object(get_int() * obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(intValue * obj.intValue);
+                            return Object(get_int() * obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(intValue * obj.doubleValue);
+                            return Object(get_int() * obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be multiplied by a string!");
                     }
@@ -315,11 +418,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(doubleValue * obj.boolValue);
+                            return Object(get_double() * obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(doubleValue * obj.intValue);
+                            return Object(get_double() * obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(doubleValue * obj.doubleValue);
+                            return Object(get_double() * obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Double cannot be multiplied by a string!");
                     }
@@ -344,11 +447,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(boolValue / obj.boolValue);
+                            return Object(get_bool() / obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(boolValue / obj.intValue);
+                            return Object(get_bool() / obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(boolValue / obj.doubleValue);
+                            return Object(get_bool() / obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be divided by a string!");
                     }
@@ -359,11 +462,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(intValue / obj.boolValue);
+                            return Object(get_int() / obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(intValue / obj.intValue);
+                            return Object(get_int() / obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(intValue / obj.doubleValue);
+                            return Object(get_int() / obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Boolean cannot be divided by a string!");
                     }
@@ -374,11 +477,11 @@ class Object
                     switch (obj.type)
                     {
                         case ObjectType::BOOLEAN:
-                            return Object(doubleValue / obj.boolValue);
+                            return Object(get_double() / obj.get_bool());
                         case ObjectType::INTEGER:
-                            return Object(doubleValue / obj.intValue);
+                            return Object(get_double() / obj.get_int());
                         case ObjectType::DOUBLE:
-                            return Object(doubleValue / obj.doubleValue);
+                            return Object(get_double() / obj.get_double());
                         case ObjectType::STRING:
                             throw std::runtime_error("Double cannot be divided by a string!");
                     }
@@ -399,14 +502,16 @@ class Object
             switch (type)
             {
                 case ObjectType::BOOLEAN:
-                    return Object(!boolValue);
+                    return Object(!get_bool());
                 case ObjectType::INTEGER:
-                    return Object(-1 * intValue);
+                    return Object(-1 * get_int());
                 case ObjectType::DOUBLE:
-                    return Object(-1 * doubleValue);
+                    return Object(-1 * get_double());
                 case ObjectType::STRING:
                     throw std::runtime_error("Cannot negate a string!");
             }
+
+            return Object();
         }
 
         ObjectType get_type()
