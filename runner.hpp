@@ -20,10 +20,9 @@ enum class ObjectType
 class Object
 {
     ObjectType type;
+    void* value;
 
     public:
-        void* value;
-
         Object()
         {
             type = ObjectType::_NULL;
@@ -54,64 +53,52 @@ class Object
             this->value = new double(doubleValue);
         }
 
-        // TODO: work on using only one value to represent all values.
-
         Object(const Object& other)
         {
+            this->type = other.type;
+
             switch (type)
             {
                 case ObjectType::BOOLEAN:
-                    value = new bool(*static_cast<bool*>(value));
+                    value = new bool(*static_cast<bool*>(other.value));
                     break;
                 case ObjectType::INTEGER:
-                    value = new int(*static_cast<int*>(value));
+                    value = new int(*static_cast<int*>(other.value));
                     break;
                 case ObjectType::DOUBLE:
-                    value = new double(*static_cast<double*>(value));
+                    value = new double(*static_cast<double*>(other.value));
                     break;
                 case ObjectType::STRING:
-                    value = new std::string(*static_cast<std::string*>(value));
+                    value = new std::string(*static_cast<std::string*>(other.value));
                     break;
             }
         }
 
         Object& operator=(const Object& other) 
         {
+            deleteValue(*this);
+
             if (this != &other)
             {
-                if (value != nullptr)
+                if (other.value != nullptr)
                 {
+                    this->type = other.type;
+
                     switch (type)
                     {
                         case ObjectType::BOOLEAN:
-                            delete static_cast<bool*>(value);
+                            value = new bool(*static_cast<bool*>(other.value));
                             break;
                         case ObjectType::INTEGER:
-                            delete static_cast<int*>(value);
+                            value = new int(*static_cast<int*>(other.value));
                             break;
                         case ObjectType::DOUBLE:
-                            delete static_cast<double*>(value);
+                            value = new double(*static_cast<double*>(other.value));
                             break;
                         case ObjectType::STRING:
-                            delete static_cast<std::string*>(value);
+                            value = new std::string(*static_cast<std::string*>(other.value));
                             break;
                     }
-                }
-
-                switch (type)
-                {
-                    case ObjectType::BOOLEAN:
-                        value = new bool(*static_cast<bool*>(value));
-                        break;
-                    case ObjectType::INTEGER:
-                        value = new int(*static_cast<int*>(value));
-                        break;
-                    case ObjectType::DOUBLE:
-                        value = new double(*static_cast<double*>(value));
-                        break;
-                    case ObjectType::STRING:
-                        value = new std::string(*static_cast<std::string*>(value));
-                        break;
                 }
             }
 
@@ -120,24 +107,34 @@ class Object
 
         ~Object()
         {
-            if (value == nullptr) return;
+            deleteValue(*this);
+        }
 
-            switch (type)
+        static void deleteValue(Object& obj)
+        {
+            if (obj.value != nullptr)
             {
-                case ObjectType::BOOLEAN:
-                    delete static_cast<bool*>(value);
-                    break;
-                case ObjectType::INTEGER:
-                    delete static_cast<int*>(value);
-                    break;
-                case ObjectType::DOUBLE:
-                    delete static_cast<double*>(value);
-                    break;
-                case ObjectType::STRING:
-                    delete static_cast<std::string*>(value);
-                    break;
+                switch (obj.type)
+                {
+                    case ObjectType::BOOLEAN:
+                        delete static_cast<bool*>(obj.value);
+                        break;
+                    case ObjectType::INTEGER:
+                        delete static_cast<int*>(obj.value);
+                        break;
+                    case ObjectType::DOUBLE:
+                        delete static_cast<double*>(obj.value);
+                        break;
+                    case ObjectType::STRING:
+                        delete static_cast<std::string*>(obj.value);
+                        break;
+                }
             }
         }
+
+        /**
+         * Getters
+        */
 
         bool get_bool()
         {
@@ -158,6 +155,10 @@ class Object
         {
             return *(std::string*)value;
         }
+
+        /**
+         * Casting functions
+        */
 
         Object cast_to_bool()
         {
@@ -250,6 +251,15 @@ class Object
 
             return Object();
         }
+
+        ObjectType get_type()
+        {
+            return type;
+        }
+
+        /**
+         * Operations
+        */
 
         Object add_to(Object obj)
         {
@@ -512,11 +522,6 @@ class Object
             }
 
             return Object();
-        }
-
-        ObjectType get_type()
-        {
-            return type;
         }
 };
 
