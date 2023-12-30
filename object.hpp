@@ -1,3 +1,12 @@
+/**
+ * 
+ * @author Christian Marcellino
+ * @date 12/30/2023
+ * 
+ * This class maintains objects during the runtime of the popcorn program.
+ * 
+*/
+
 #ifndef OBJECT
 #define OBJECT
 
@@ -60,6 +69,7 @@ namespace run
             Object multiplied_by(Object obj);
             Object divided_by(Object obj);
             Object negate();
+            Object equals(Object obj);
     };
 }
 

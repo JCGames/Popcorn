@@ -25,14 +25,13 @@ class Runner
 {
     std::vector<_Variable> _variables;
 
-    run::Object call_function(ast::FunctionCall* funcCall);
-
-    run::Object interpret(ast::Statement* stat);
-
     void add_variable(_Variable variable);
     void remove_variable(_Variable variable);
     _Variable& get_variable(std::string name);
     bool has_variable(std::string name);
+
+    run::Object call_function(ast::FunctionCall* funcCall);
+    run::Object interpret(ast::Statement* stat);
 
     public:
         Runner();

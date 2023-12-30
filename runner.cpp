@@ -2,10 +2,7 @@
 
 using namespace run;
 
-Runner::Runner()
-{
-
-}
+Runner::Runner() { }
 
 void Runner::add_variable(_Variable variable)
 {
@@ -63,7 +60,14 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
         if (funcCall->parameterList.size() != 1)
             throw std::runtime_error("Function [print] only takes one argument!");
 
-        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str() << std::endl;
+        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str();
+    }
+    else if (funcCall->functionName == "printl")
+    {
+        if (funcCall->parameterList.size() != 1)
+            throw std::runtime_error("Function [printl] only takes one argument!");
+
+        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str() << "\n";
     }
     // CAST TO INT FUNCTION
     else if (funcCall->functionName == "int")
@@ -88,6 +92,15 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
             throw std::runtime_error("Function [double] only takes one argument!");
         
         return interpret(funcCall->parameterList[0]).cast_to_double();
+    }
+    else if (funcCall->functionName == "input")
+    {
+        if (funcCall->parameterList.size() != 0)
+            throw std::runtime_error("Function [input] does not take any arguments!");
+        
+        std::string result;
+        getline(std::cin, result);
+        return Object(result);
     }
 
     return Object();
@@ -182,6 +195,15 @@ Object Runner::interpret(ast::Statement* stat)
             if (ast::Negate* negate = static_cast<ast::Negate*>(stat))
             {
                 return interpret(negate->value).negate();
+            }
+            break;
+        case ast::StatementType::EQUALS_OPERATOR:
+            if (ast::EqualsOperator* equalsOperator = static_cast<ast::EqualsOperator*>(stat))
+            {
+                Object left = interpret(equalsOperator->left);
+                Object right = interpret(equalsOperator->right);
+
+                return left.equals(right);
             }
             break;
     }

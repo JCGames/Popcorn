@@ -502,3 +502,84 @@ Object Object::negate()
 
     return Object();
 }
+
+Object Object::equals(Object obj)
+{
+    switch (type)
+    {
+        case ObjectType::BOOLEAN:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object(get_bool() == obj.get_bool());
+                case ObjectType::INTEGER:
+                    return Object(get_bool() == obj.get_int());
+                case ObjectType::DOUBLE:
+                    return Object(get_bool() == obj.get_double());
+                case ObjectType::STRING:
+                    return Object(get_bool() == obj.cast_to_bool().get_bool());
+            }
+
+            break;
+        case ObjectType::INTEGER:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object(get_int() == obj.get_bool());
+                case ObjectType::INTEGER:
+                    return Object(get_int() == obj.get_int());
+                case ObjectType::DOUBLE:
+                    return Object(get_int() == obj.get_double());
+                case ObjectType::STRING:
+                    return Object(get_int() == obj.cast_to_int().get_int());
+            }
+
+            break;
+        case ObjectType::DOUBLE:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object(get_double() == obj.get_bool());
+                case ObjectType::INTEGER:
+                    return Object(get_double() == obj.get_int());
+                case ObjectType::DOUBLE:
+                    return Object(get_double() == obj.get_double());
+                case ObjectType::STRING:
+                    return Object(get_double() == obj.cast_to_double().get_double());
+            }
+
+            break;
+        case ObjectType::STRING:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    try {
+                        return Object(cast_to_bool().get_bool() == obj.get_bool());
+                    } catch (const std::exception& e) {
+                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
+                    }
+                case ObjectType::INTEGER:
+                    try {
+                        return Object(cast_to_int().get_int() == obj.get_int());
+                    } catch (const std::exception& e) {
+                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
+                    }
+                case ObjectType::DOUBLE:
+                    try {
+                        return Object(cast_to_double().get_double() == obj.get_double());
+                    } catch (const std::exception& e) {
+                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
+                    }
+                case ObjectType::STRING:
+                    return Object(get_str() == obj.get_str());
+            }
+
+            break;
+    }
+
+    return Object();
+}

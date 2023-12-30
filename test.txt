@@ -1,2 +1,3 @@
-x = 2 + 2
-print(x * x)
+print("Input: ")
+x = input()
+printl("Your name is " + x)
