@@ -1,4 +1,4 @@
-main: main.o lexer.o parser.o runner.o
+main: main.o lexer.o parser.o runner.o object.o
 	g++ -g -Wall $^ -o popcorn
 
 main.o: main.cpp
@@ -11,6 +11,9 @@ parser.o: parser.cpp
 	g++ -c $<
 
 runner.o: runner.cpp
+	g++ -c $<
+
+object.o: object.cpp
 	g++ -c $<
 
 clean:

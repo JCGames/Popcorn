@@ -1,5 +1,7 @@
 #include "runner.hpp"
 
+using namespace run;
+
 Runner::Runner()
 {
 
