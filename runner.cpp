@@ -114,10 +114,16 @@ Object Runner::interpret(ast::Statement* stat)
 {
     switch (stat->get_type())
     {
-        case ast::StatementType::NUMBER:
-            if (ast::Number* num = static_cast<ast::Number*>(stat))
+        case ast::StatementType::DOUBLE:
+            if (ast::Double* _double = static_cast<ast::Double*>(stat))
             {
-                return Object(num->value);
+                return Object(_double->value);
+            }
+            break;
+        case ast::StatementType::INTEGER:
+            if (ast::Integer* _int = static_cast<ast::Integer*>(stat))
+            {
+                return Object(_int->value);
             }
             break;
         case ast::StatementType::STRING:
@@ -263,24 +269,24 @@ Object Runner::interpret(ast::Statement* stat)
             }
             break;
         case ast::StatementType::IF:
-            if (ast::If* x = static_cast<ast::If*>(stat))
+            if (ast::If* _if = static_cast<ast::If*>(stat))
             {
-                Object result = interpret(x->condition);
+                Object result = interpret(_if->condition);
 
                 if (result.get_type() == ObjectType::BOOLEAN && result.get_bool() == true)
                 {
-                    interpret(x->body);
+                    interpret(_if->body);
                 }
-                else if (x->elseOrIf != nullptr)
+                else if (_if->elseOrIf != nullptr)
                 {
-                    interpret(x->elseOrIf);
+                    interpret(_if->elseOrIf);
                 }
             }
             break;
         case ast::StatementType::ELSE:
-            if (ast::Else* x = static_cast<ast::Else*>(stat))
+            if (ast::Else* _else = static_cast<ast::Else*>(stat))
             {
-                interpret(x->body);
+                interpret(_else->body);
             }
             break;
         case ast::StatementType::AND_CONDITION:
@@ -304,16 +310,25 @@ Object Runner::interpret(ast::Statement* stat)
             }
             break;
         case ast::StatementType::WHILE:
-            if (ast::While* x = static_cast<ast::While*>(stat))
+            if (ast::While* _while = static_cast<ast::While*>(stat))
             {
-                Object result = interpret(x->condition);
+                Object result = interpret(_while->condition);
 
                 while (result.get_type() == ObjectType::BOOLEAN && result.get_bool())
                 {
-                    interpret(x->body);
-                    result = interpret(x->condition);
+                    interpret(_while->body);
+                    result = interpret(_while->condition);
                 }
                 
+            }
+            break;
+        case ast::StatementType::MODULUS_OPERATOR:
+            if (ast::ModulusOperator* modOperator = static_cast<ast::ModulusOperator*>(stat))
+            {
+                Object left = interpret(modOperator->left);
+                Object right = interpret(modOperator->right);
+
+                return left.modulus_by(right);
             }
             break;
     }

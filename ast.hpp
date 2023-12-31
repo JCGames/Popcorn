@@ -16,7 +16,8 @@ namespace ast
         SUB_OPERATOR,
         DIV_OPERATOR,
         MUL_OPERATOR,
-        NUMBER,
+        DOUBLE,
+        INTEGER,
         STRING,
         EXPRESSION,
         VARIABLE_ASSIGNMENT,
@@ -37,6 +38,7 @@ namespace ast
         FOR,
         AND_CONDITION,
         OR_CONDITION,
+        MODULUS_OPERATOR,
     };
 
     static std::string get_statement_type_name(StatementType type)
@@ -50,7 +52,8 @@ namespace ast
             case StatementType::SUB_OPERATOR: return "SUBTRACT OPERATOR";
             case StatementType::DIV_OPERATOR: return "DIVIDE OPERATOR";
             case StatementType::MUL_OPERATOR: return "MULTIPLY OPERATOR";
-            case StatementType::NUMBER: return "NUMBER";
+            case StatementType::DOUBLE: return "DOUBLE";
+            case StatementType::INTEGER: return "INTEGER";
             case StatementType::STRING: return "STRING";
             case StatementType::EXPRESSION: return "EXPRESSION";
             case StatementType::VARIABLE_ASSIGNMENT: return "VARIABLE ASSIGNMENT";
@@ -71,6 +74,7 @@ namespace ast
             case StatementType::FOR: return "FOR";
             case StatementType::AND_CONDITION: return "AND CONDITION";
             case StatementType::OR_CONDITION: return "OR CONDITION";
+            case StatementType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
             default: return "UNDEFINED";
         }
     }
@@ -171,6 +175,17 @@ namespace ast
             }
     };
 
+    class ModulusOperator : public BinaryOperator
+    {
+        public:
+            ModulusOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+
+            StatementType get_type()
+            {
+                return StatementType::MODULUS_OPERATOR;
+            }
+    };
+
     class MultiplyOperator : public BinaryOperator
     {
         public:
@@ -182,19 +197,35 @@ namespace ast
             }
     };
 
-    class Number : public Statement
+    class Double : public Statement
     {
         public:
             double value;
 
-            Number(double value)
+            Double(double value)
             {
                 this->value = value;
             }
 
             StatementType get_type() 
             {
-                return StatementType::NUMBER;
+                return StatementType::DOUBLE;
+            }
+    };
+
+    class Integer : public Statement
+    {
+        public:
+            int value;
+
+            Integer(int value)
+            {
+                this->value = value;
+            }
+
+            StatementType get_type() 
+            {
+                return StatementType::INTEGER;
             }
     };
 
@@ -537,21 +568,21 @@ namespace ast
             }
 
         private:
-            void print_statement(Statement* statement, std::string indent)
+            void print_statement(Statement* stat, std::string indent)
             {
-                if (statement == NULL)
+                if (stat == NULL)
                 {
                     printf("NULL\n");
                     return;
                 }
 
-                printf("%s%s\n", indent.c_str(), get_statement_type_name(statement->get_type()).c_str());
-                switch (statement->get_type())
+                printf("%s%s\n", indent.c_str(), get_statement_type_name(stat->get_type()).c_str());
+                switch (stat->get_type())
                 {
                     case StatementType::NONE:
                         break;
                     case StatementType::UNARY_OPERATOR:
-                        if (UnaryOperator* value = static_cast<UnaryOperator*>(statement))
+                        if (UnaryOperator* value = static_cast<UnaryOperator*>(stat))
                             print_statement(value->value, indent + '\t');
                         break;
                     case StatementType::BINARY_OPERATOR:
@@ -567,45 +598,50 @@ namespace ast
                     case StatementType::LESS_THAN_EQUALS_OPERATOR:
                     case StatementType::AND_CONDITION:
                     case StatementType::OR_CONDITION:
+                    case StatementType::MODULUS_OPERATOR:
                         printf("%sLEFT:\n", indent.c_str());
-                        if (BinaryOperator* value = static_cast<BinaryOperator*>(statement))
+                        if (BinaryOperator* value = static_cast<BinaryOperator*>(stat))
                             print_statement(value->left, indent + '\t');
                         printf("%sRIGHT:\n", indent.c_str());
-                        if (BinaryOperator* value = static_cast<BinaryOperator*>(statement))
+                        if (BinaryOperator* value = static_cast<BinaryOperator*>(stat))
                             print_statement(value->right, indent + '\t');
                         break;
-                    case StatementType::NUMBER:
-                        if (Number* number = static_cast<Number*>(statement))
-                            printf("%s%f\n", indent.c_str(), number->value);
+                    case StatementType::DOUBLE:
+                        if (Double* _double = static_cast<Double*>(stat))
+                            printf("%s%f\n", indent.c_str(), _double->value);
+                        break;
+                    case StatementType::INTEGER:
+                        if (Integer* integer = static_cast<Integer*>(stat))
+                            printf("%s%i\n", indent.c_str(), integer->value);
                         break;
                     case StatementType::STRING:
-                        if (String* str = static_cast<String*>(statement))
+                        if (String* str = static_cast<String*>(stat))
                             printf("%s%s\n", indent.c_str(), str->value.c_str());
                         break;
                     case StatementType::EXPRESSION:
-                        if (Expression* exp = static_cast<Expression*>(statement))
+                        if (Expression* exp = static_cast<Expression*>(stat))
                             print_statement(exp->root, indent + '\t');
                         break;
                     case StatementType::VARIABLE_ASSIGNMENT:
-                        if (VariableAssignment* varDec = static_cast<VariableAssignment*>(statement))
+                        if (VariableAssignment* varDec = static_cast<VariableAssignment*>(stat))
                         {
                             printf("%sNAME: |%s|\n", indent.c_str(), varDec->variableName.c_str());
                             print_statement(varDec->expression, indent + '\t');
                         }
                         break;
                     case StatementType::BLOCK:
-                        if (Block* block = static_cast<Block*>(statement))
+                        if (Block* block = static_cast<Block*>(stat))
                         {
                             for (auto statement : block->statements)
                                 print_statement(statement, indent + '\t');
                         }
                         break;
                     case StatementType::VARIABLE:
-                        if (Variable* variable = static_cast<Variable*>(statement))
+                        if (Variable* variable = static_cast<Variable*>(stat))
                             printf("%sNAME: %s\n", indent.c_str(), variable->name.c_str());
                         break;
                     case StatementType::FUNCTION_CALL:
-                        if (FunctionCall* funcCall = static_cast<FunctionCall*>(statement))
+                        if (FunctionCall* funcCall = static_cast<FunctionCall*>(stat))
                         {
                             printf("%sFunction Name: %s\n", indent.c_str(), funcCall->functionName.c_str());
                             printf("%s---PARAMETER LIST:\n", indent.c_str());
@@ -614,13 +650,13 @@ namespace ast
                         }
                         break;
                     case StatementType::NEGATE:
-                        if (Negate* negate = static_cast<Negate*>(statement))
+                        if (Negate* negate = static_cast<Negate*>(stat))
                         {
                             print_statement(negate->value, indent + '\t');
                         }
                         break;
                     case StatementType::BOOLEAN:
-                        if (Boolean* b = static_cast<Boolean*>(statement))
+                        if (Boolean* b = static_cast<Boolean*>(stat))
                         {
                             if (b->value)
                             {
@@ -633,34 +669,34 @@ namespace ast
                         }
                         break;
                     case StatementType::IF:
-                        if (If* x = static_cast<If*>(statement))
+                        if (If* _if = static_cast<If*>(stat))
                         {
                             printf("%sCONDITION:\n", indent.c_str());
-                            print_statement(x->condition, indent + '\t');
+                            print_statement(_if->condition, indent + '\t');
                             printf("%sBODY:\n", indent.c_str());
-                            print_statement(x->body, indent + '\t');
+                            print_statement(_if->body, indent + '\t');
 
-                            if (x->elseOrIf != nullptr)
+                            if (_if->elseOrIf != nullptr)
                             {
                                 printf("%sCHILD STATEMENT:\n", indent.c_str());
-                                print_statement(x->elseOrIf, indent + '\t');
+                                print_statement(_if->elseOrIf, indent + '\t');
                             }
                         }
                         break;
                     case StatementType::ELSE:
-                        if (Else* x = static_cast<Else*>(statement))
+                        if (Else* _else = static_cast<Else*>(stat))
                         {
                             printf("%sBODY:\n", indent.c_str());
-                            print_statement(x->body, indent + '\t');
+                            print_statement(_else->body, indent + '\t');
                         }
                         break;
                     case StatementType::WHILE:
-                        if (While* x = static_cast<While*>(statement))
+                        if (While* _while = static_cast<While*>(stat))
                         {
                             printf("%sCONDITION:\n", indent.c_str());
-                            print_statement(x->condition, indent + '\t');
+                            print_statement(_while->condition, indent + '\t');
                             printf("%sBODY:\n", indent.c_str());
-                            print_statement(x->body, indent + '\t');
+                            print_statement(_while->body, indent + '\t');
                         }
                         break;
                 }

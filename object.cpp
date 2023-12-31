@@ -325,6 +325,55 @@ Object Object::add_to(Object obj)
     return Object();
 }
 
+Object Object::modulus_by(Object obj)
+{
+    switch (type)
+    {
+        case ObjectType::BOOLEAN:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object(get_bool() % obj.get_bool());
+                case ObjectType::INTEGER:
+                    return Object(get_bool() % obj.get_int());
+                case ObjectType::DOUBLE:
+                    throw std::runtime_error("Cannot modulus by a double!");
+                case ObjectType::STRING:
+                    throw std::runtime_error("Cannot modulus by a string!");
+            }
+
+            break;
+        case ObjectType::INTEGER:
+
+            switch (obj.type)
+            {
+                case ObjectType::BOOLEAN:
+                    return Object(get_int() % obj.get_bool());
+                case ObjectType::INTEGER:
+                    return Object(get_int() % obj.get_int());
+                case ObjectType::DOUBLE:
+                    throw std::runtime_error("Cannot modulus by a double!");
+                case ObjectType::STRING:
+                    throw std::runtime_error("Cannot modulus by a string!");
+            }
+
+            break;
+        case ObjectType::DOUBLE:
+
+            throw std::runtime_error("Double cannot be moduloed!");
+
+            break;
+        case ObjectType::STRING:
+
+            throw std::runtime_error("String cannot be moduloed!");
+
+            break;
+    }
+
+    return Object();
+}
+
 Object Object::subtract_from(Object obj)
 {
     switch (type)

@@ -23,15 +23,15 @@ Eventually files will be ended with the extension `.pop` to run.
 | + | Add | 3 |
 | - | Subtract | 3 |
 | * | Multiply | 4 |
+| % | Modulus | 4 |
 | / | divide | 4 |
 
 ### Terms
 
-* currently, by defualt, every number declared is a double (problamatic XD)
-
 | Example | Type | 
 |---------|------|
-| 10 | double |
+| 10 | integer |
+| 10.0 | double |
 | "Hello, world!" | string |
 | ( ... ) | Expression |
 | 1 + 1 | Expression |

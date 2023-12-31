@@ -66,17 +66,27 @@ Token Lexer::get_next_token()
     // NUMBERS
     else if (isdigit(_current) || (_current == '.' && isdigit(peek_next())))
     {
+        bool hasDecimalPoint = false;
+
         while (isdigit(_current) || (_current == '.' && isdigit(peek_next())))
         {
             value += _current;
+
+            if (!hasDecimalPoint && _current == '.')
+                hasDecimalPoint = true;
+            else if (_current == '.')
+                throw std::runtime_error("To many decimal points in number on line: " + std::to_string(_currentLineNumber));
 
             get_next();
         }
 
         if (_current == '.')
-            throw std::runtime_error("Number may not end with a period!");
+            throw std::runtime_error("Number may not end with a period on line: " + std::to_string(_currentLineNumber));
 
-        return { TokenType::NUM, value, _currentLineNumber };
+        if (hasDecimalPoint)
+            return { TokenType::DOUBLE, value, _currentLineNumber };
+        else
+            return { TokenType::INTEGER, value, _currentLineNumber };
     }
     // WORDS
     else if (isalpha(_current) || _current == '_')
@@ -158,6 +168,11 @@ Token Lexer::get_next_token()
         return { TokenType::NOT_EQUALS, "", _currentLineNumber };
     }
     // OPERATORS
+    else if (_current == '%')
+    {
+        get_next();
+        return { TokenType::MODULUS, "", _currentLineNumber };
+    }
     else if (_current == '>')
     {
         get_next();

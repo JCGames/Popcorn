@@ -9,7 +9,8 @@ namespace lex
 {
     enum class TokenType 
     {
-        NUM,
+        DOUBLE,
+        INTEGER,
         MUL,
         DIV,
         SUB,
@@ -39,14 +40,16 @@ namespace lex
         WHILE,
         FOR,
         AND_CONDITION,
-        OR_CONDITION
+        OR_CONDITION,
+        MODULUS,
     };
 
     static std::string get_token_type_name(TokenType type)
     {
         switch (type)
         {
-            case TokenType::NUM: return "NUMBER";
+            case TokenType::DOUBLE: return "DOUBLE";
+            case TokenType::INTEGER: return "INTEGER";
             case TokenType::MUL: return "MULTIPLICATION";
             case TokenType::DIV: return "DIVISION";
             case TokenType::SUB: return "SUBTRACTION";
@@ -77,6 +80,7 @@ namespace lex
             case TokenType::FOR: return "FOR";
             case TokenType::AND_CONDITION: return "AND CONDITION";
             case TokenType::OR_CONDITION: return "OR CONDITION";
+            case TokenType::MODULUS: return "MODULUS";
             default: return "NONE";
         }
     }

@@ -65,6 +65,7 @@ namespace run
             */
 
             Object add_to(Object obj);
+            Object modulus_by(Object obj);
             Object subtract_from(Object obj);
             Object multiplied_by(Object obj);
             Object divided_by(Object obj);

@@ -203,7 +203,7 @@ Statement* Parser::parse_term()
 {
     Statement* left = parse_factor();
 
-    while (_currentToken.type == TokenType::MUL || _currentToken.type == TokenType::DIV)
+    while (_currentToken.type == TokenType::MUL || _currentToken.type == TokenType::DIV || _currentToken.type == TokenType::MODULUS)
     {
         if (_currentToken.type == TokenType::MUL)
         {
@@ -216,6 +216,12 @@ Statement* Parser::parse_term()
             move_next_non_wspace();
             Statement* right = parse_factor();
             left = new DivideOperator(left, right);
+        }
+        else if (_currentToken.type == TokenType::MODULUS)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new ModulusOperator(left, right);
         }
     }
 
@@ -241,8 +247,8 @@ Statement* Parser::parse_factor()
     {
         result = parse_function_call();
     }
-    // NUMBER
-    else if (_currentToken.type == TokenType::NUM)
+    // DOUBLE
+    else if (_currentToken.type == TokenType::DOUBLE)
     {
         double value;
 
@@ -252,7 +258,20 @@ Statement* Parser::parse_factor()
             throw std::runtime_error(e.what());
         }   
 
-        result = new Number(value);
+        result = new Double(value);
+    }
+    // INTEGER
+    else if (_currentToken.type == TokenType::INTEGER)
+    {
+        int value;
+
+        try {
+            value = std::stoi(_currentToken.value);
+        } catch (std::exception& e) {
+            throw std::runtime_error(e.what());
+        }   
+
+        result = new Integer(value);
     }
     // STRING
     else if (_currentToken.type == TokenType::STRING)
