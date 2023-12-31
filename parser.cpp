@@ -109,7 +109,7 @@ bool Parser::is_current_token_number()
 /// @brief Ends on the next non-whitespace token.
 Expression* Parser::parse_expression()
 {
-    return new Expression(parse_condition());
+    return new Expression(parse_condition(), _currentToken.lineNumber);
 }
 
 Statement* Parser::parse_condition()
@@ -122,13 +122,13 @@ Statement* Parser::parse_condition()
         {
             move_next_non_wspace();
             Statement* right = parse_equality();
-            left = new AndCondition(left, right);
+            left = new AndCondition(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::OR_CONDITION)
         {
             move_next_non_wspace();
             Statement* right = parse_equality();
-            left = new OrCondition(left, right);
+            left = new OrCondition(left, right, _currentToken.lineNumber);
         }
     }
 
@@ -147,37 +147,37 @@ Statement* Parser::parse_equality()
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new EqualsOperator(left, right);
+            left = new EqualsOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::NOT_EQUALS)
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new NotEqualsOperator(left, right);
+            left = new NotEqualsOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::GREATER_THAN)
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new GreaterThanOperator(left, right);
+            left = new GreaterThanOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::LESS_THAN)
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new LessThanOperator(left, right);
+            left = new LessThanOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::GREATER_THAN_EQUALS)
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new GreaterThanEqualsOperator(left, right);
+            left = new GreaterThanEqualsOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::LESS_THAN_EQUALS)
         {
             move_next_non_wspace();
             Statement* right = parse_addend();
-            left = new LessThanEqualsOperator(left, right);
+            left = new LessThanEqualsOperator(left, right, _currentToken.lineNumber);
         }
     }
 
@@ -194,13 +194,13 @@ Statement* Parser::parse_addend()
         {
             move_next_non_wspace();
             Statement* right = parse_term();
-            left = new AddOperator(left, right);
+            left = new AddOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::SUB)
         {
             move_next_non_wspace();
             Statement* right = parse_term();
-            left = new SubtractOperator(left, right);
+            left = new SubtractOperator(left, right, _currentToken.lineNumber);
         }
     }
 
@@ -217,19 +217,19 @@ Statement* Parser::parse_term()
         {
             move_next_non_wspace();
             Statement* right = parse_factor();
-            left = new MultiplyOperator(left, right);
+            left = new MultiplyOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::DIV)
         {
             move_next_non_wspace();
             Statement* right = parse_factor();
-            left = new DivideOperator(left, right);
+            left = new DivideOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::MODULUS)
         {
             move_next_non_wspace();
             Statement* right = parse_factor();
-            left = new ModulusOperator(left, right);
+            left = new ModulusOperator(left, right, _currentToken.lineNumber);
         }
     }
 
@@ -266,7 +266,7 @@ Statement* Parser::parse_factor()
             throw std::runtime_error(e.what());
         }   
 
-        result = new Double(value);
+        result = new Double(value, _currentToken.lineNumber);
     }
     // INTEGER
     else if (_currentToken.type == TokenType::INTEGER)
@@ -279,27 +279,27 @@ Statement* Parser::parse_factor()
             throw std::runtime_error(e.what());
         }   
 
-        result = new Integer(value);
+        result = new Integer(value, _currentToken.lineNumber);
     }
     // STRING
     else if (_currentToken.type == TokenType::STRING)
     {
-        result = new String(_currentToken.value);
+        result = new String(_currentToken.value, _currentToken.lineNumber);
     }
     // VARIABLE
     else if (_currentToken.type == TokenType::WORD)
     {
-        result = new Variable(_currentToken.value);
+        result = new Variable(_currentToken.value, _currentToken.lineNumber);
     }
     // NEGATE
     else if (_currentToken.type == TokenType::SUB)
     {
-        result = new Negate(parse_factor());
+        result = new Negate(parse_factor(), _currentToken.lineNumber);
     }
     // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
     {
-        result = new Boolean(_currentToken.value == "true" ? true : false);
+        result = new Boolean(_currentToken.value == "true" ? true : false, _currentToken.lineNumber);
     }
     // ERROR
     else
@@ -329,7 +329,7 @@ If* Parser::parse_if()
         Block* body = get_block();
         move_next_non_wspace_pass_eols();
 
-        If* result = new If(condition, body);
+        If* result = new If(condition, body, _currentToken.lineNumber);
 
         // ELSE IF CASE
         if (_currentToken.type == TokenType::ELSE && peek_next_non_wspace().type == TokenType::IF)
@@ -357,7 +357,7 @@ Else* Parser::parse_else()
         Block* body = get_block();
         move_next_non_wspace_pass_eols();
 
-        return new Else(body);
+        return new Else(body, _currentToken.lineNumber);
     }
     else throw std::runtime_error("Could not find body for else statement on line: " + std::to_string(_currentToken.lineNumber));
 }
@@ -381,7 +381,7 @@ Statement* Parser::get_next_statement()
     // VARIABLE
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
     {
-        VariableAssignment* vd = new VariableAssignment(_currentToken.value, NULL);
+        VariableAssignment* vd = new VariableAssignment(_currentToken.value, NULL, _currentToken.lineNumber);
 
         move_next_non_wspace();
         move_next_non_wspace();
@@ -437,7 +437,7 @@ Statement* Parser::get_next_statement()
             Block* body = get_block();
             move_next_non_wspace_pass_eols();
 
-            return new While(condition, body);
+            return new While(condition, body, _currentToken.lineNumber);
         }
         
         throw std::runtime_error("Could not find body for while statement on line: " + std::to_string(_currentToken.lineNumber));
@@ -449,7 +449,7 @@ Statement* Parser::get_next_statement()
         move_next_non_wspace();
         move_next_non_wspace_pass_eols();
 
-        return new VariableAssignment(variableName, new Expression(new AddOperator(new Variable(variableName), new Integer(1))));
+        return new VariableAssignment(variableName, new Expression(new AddOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
     }
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT)
     {
@@ -458,7 +458,7 @@ Statement* Parser::get_next_statement()
         move_next_non_wspace();
         move_next_non_wspace_pass_eols();
 
-        return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName), new Integer(1))));
+        return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
     }
 
     return NULL;
@@ -466,7 +466,7 @@ Statement* Parser::get_next_statement()
 
 FunctionCall* Parser::parse_function_call()
 {
-    FunctionCall* funcCall = new FunctionCall(_currentToken.value);
+    FunctionCall* funcCall = new FunctionCall(_currentToken.value, _currentToken.lineNumber);
 
     move_next_non_wspace();
     move_next_non_wspace();
@@ -494,7 +494,7 @@ FunctionCall* Parser::parse_function_call()
 
 Block* Parser::get_block()
 {
-    Block* result = new Block();
+    Block* result = new Block(_currentToken.lineNumber);
 
     if (_currentToken.type == TokenType::OPEN_BRACKET)
         move_next();

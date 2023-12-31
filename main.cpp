@@ -30,7 +30,6 @@ int main(int argc, char** args)
         if (DEBUG)
         {
             printf("========== TOKENS ==========\n");
-
             for (const auto& token : tokens)
                 print_token(token);
         }

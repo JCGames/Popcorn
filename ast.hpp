@@ -81,7 +81,14 @@ namespace ast
 
     class Statement
     {
+        int _lineIndex;
+
         public:
+            Statement(int lineIndex)
+            {
+                _lineIndex = lineIndex;
+            }
+
             virtual ~Statement()
             {
                 
@@ -91,6 +98,11 @@ namespace ast
             {
                 throw std::runtime_error("Statement function get_type not implemented!");
             }
+
+            int get_line_index()
+            {
+                return _lineIndex;
+            }
     };
 
     class UnaryOperator : public Statement
@@ -98,7 +110,7 @@ namespace ast
         public:
             Statement* value;
 
-            UnaryOperator(Statement* value)
+            UnaryOperator(Statement* value, int lineIndex) : Statement(lineIndex)
             {
                 this->value = value;
             }
@@ -121,7 +133,7 @@ namespace ast
             Statement* left;
             Statement* right;
 
-            BinaryOperator(Statement* left, Statement* right)
+            BinaryOperator(Statement* left, Statement* right, int lineIndex) : Statement(lineIndex)
             {
                 this->left = left;
                 this->right = right;
@@ -145,7 +157,7 @@ namespace ast
     class AddOperator : public BinaryOperator
     {
         public:
-            AddOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+            AddOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
 
             StatementType get_type()
             {
@@ -156,7 +168,7 @@ namespace ast
     class SubtractOperator : public BinaryOperator
     {
         public:
-            SubtractOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+            SubtractOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
 
             StatementType get_type()
             {
@@ -167,7 +179,7 @@ namespace ast
     class DivideOperator : public BinaryOperator
     {
         public:
-            DivideOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+            DivideOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
 
             StatementType get_type()
             {
@@ -178,7 +190,7 @@ namespace ast
     class ModulusOperator : public BinaryOperator
     {
         public:
-            ModulusOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+            ModulusOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
 
             StatementType get_type()
             {
@@ -189,11 +201,99 @@ namespace ast
     class MultiplyOperator : public BinaryOperator
     {
         public:
-            MultiplyOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
+            MultiplyOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
 
             StatementType get_type()
             {
                 return StatementType::MUL_OPERATOR;
+            }
+    };
+
+    class EqualsOperator : public BinaryOperator
+    {
+        public:
+            EqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::EQUALS_OPERATOR;
+            }
+    };
+
+    class NotEqualsOperator : public BinaryOperator
+    {
+        public:
+            NotEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::NOT_EQUALS_OPERATOR;
+            }
+    };
+
+    class GreaterThanOperator : public BinaryOperator
+    {
+        public:
+            GreaterThanOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::GREATER_THAN_OPERATOR;
+            }
+    };
+
+    class LessThanOperator : public BinaryOperator
+    {
+        public:
+            LessThanOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::LESS_THAN_OPERATOR;
+            }
+    };
+
+    class GreaterThanEqualsOperator : public BinaryOperator
+    {
+        public:
+            GreaterThanEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::GREATER_THAN_EQUALS_OPERATOR;
+            }
+    };
+
+    class LessThanEqualsOperator : public BinaryOperator
+    {
+        public:
+            LessThanEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::LESS_THAN_EQUALS_OPERATOR;
+            }
+    };
+
+    class AndCondition : public BinaryOperator
+    {
+        public:
+            AndCondition(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::AND_CONDITION;
+            }
+    };
+
+    class OrCondition : public BinaryOperator
+    {
+        public:
+            OrCondition(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+            StatementType get_type()
+            {
+                return StatementType::OR_CONDITION;
             }
     };
 
@@ -202,7 +302,7 @@ namespace ast
         public:
             double value;
 
-            Double(double value)
+            Double(double value, int lineIndex) : Statement(lineIndex)
             {
                 this->value = value;
             }
@@ -218,7 +318,7 @@ namespace ast
         public:
             int value;
 
-            Integer(int value)
+            Integer(int value, int lineIndex) : Statement(lineIndex)
             {
                 this->value = value;
             }
@@ -234,7 +334,7 @@ namespace ast
         public:
             std::string value;
 
-            String(std::string value)
+            String(std::string value, int lineIndex) : Statement(lineIndex)
             {
                 this->value = value;
             }
@@ -250,7 +350,7 @@ namespace ast
         public:
             Statement* root;
 
-            Expression(Statement* root)
+            Expression(Statement* root, int lineIndex) : Statement(lineIndex)
             {
                 this->root = root;
             }
@@ -273,7 +373,7 @@ namespace ast
             std::string variableName;
             Expression* expression;
 
-            VariableAssignment(std::string variableName, Expression* expression)
+            VariableAssignment(std::string variableName, Expression* expression, int lineIndex) : Statement(lineIndex)
             {
                 this->variableName = variableName;
                 this->expression = expression;
@@ -296,7 +396,7 @@ namespace ast
         public:
             std::string name;
 
-            Variable(std::string name)
+            Variable(std::string name, int lineIndex) : Statement(lineIndex)
             {
                 this->name = name;
             }
@@ -311,6 +411,11 @@ namespace ast
     {
         public:
             std::vector<Statement*> statements;
+
+            Block(int lineIndex) : Statement(lineIndex)
+            {
+
+            }
 
             ~Block() override
             {
@@ -333,7 +438,7 @@ namespace ast
             std::string functionName;
             std::vector<Expression*> parameterList;
 
-            FunctionCall(std::string functionName)
+            FunctionCall(std::string functionName, int lineIndex) : Statement(lineIndex)
             {
                 this->functionName = functionName;
             }
@@ -356,7 +461,7 @@ namespace ast
     class Negate : public UnaryOperator
     {
         public:
-            Negate(Statement* value) : UnaryOperator(value) { }
+            Negate(Statement* value, int lineIndex) : UnaryOperator(value, lineIndex) { }
 
             StatementType get_type()
             {
@@ -369,7 +474,7 @@ namespace ast
         public:
             bool value;
 
-            Boolean(bool value)
+            Boolean(bool value, int lineIndex) : Statement(lineIndex)
             {
                 this->value = value;
             }
@@ -377,72 +482,6 @@ namespace ast
             StatementType get_type()
             {
                 return StatementType::BOOLEAN;
-            }
-    };
-
-    class EqualsOperator : public BinaryOperator
-    {
-        public:
-            EqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::EQUALS_OPERATOR;
-            }
-    };
-
-    class NotEqualsOperator : public BinaryOperator
-    {
-        public:
-            NotEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::NOT_EQUALS_OPERATOR;
-            }
-    };
-
-    class GreaterThanOperator : public BinaryOperator
-    {
-        public:
-            GreaterThanOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::GREATER_THAN_OPERATOR;
-            }
-    };
-
-    class LessThanOperator : public BinaryOperator
-    {
-        public:
-            LessThanOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::LESS_THAN_OPERATOR;
-            }
-    };
-
-    class GreaterThanEqualsOperator : public BinaryOperator
-    {
-        public:
-            GreaterThanEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::GREATER_THAN_EQUALS_OPERATOR;
-            }
-    };
-
-    class LessThanEqualsOperator : public BinaryOperator
-    {
-        public:
-            LessThanEqualsOperator(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::LESS_THAN_EQUALS_OPERATOR;
             }
     };
 
@@ -454,7 +493,7 @@ namespace ast
             Block* body;
             Statement* elseOrIf;
 
-            If(Expression* condition, Block* body)
+            If(Expression* condition, Block* body, int lineIndex) : Statement(lineIndex)
             {
                 this->condition = condition;
                 this->body = body;
@@ -476,35 +515,13 @@ namespace ast
             }
     };
 
-    class AndCondition : public BinaryOperator
-    {
-        public:
-            AndCondition(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::AND_CONDITION;
-            }
-    };
-
-    class OrCondition : public BinaryOperator
-    {
-        public:
-            OrCondition(Statement* left, Statement* right) : BinaryOperator(left, right) { }
-
-            StatementType get_type()
-            {
-                return StatementType::OR_CONDITION;
-            }
-    };
-
     class While : public Statement
     {
         public:
             Expression* condition;
             Block* body;
 
-            While(Expression* condition, Block* body)
+            While(Expression* condition, Block* body, int lineIndex) : Statement(lineIndex)
             {
                 this->condition = condition;
                 this->body = body;
@@ -530,7 +547,7 @@ namespace ast
         public:
             Block* body;
 
-            Else(Block* body)
+            Else(Block* body, int lineIndex) : Statement(lineIndex)
             {
                 this->body = body;
             }
