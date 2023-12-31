@@ -65,10 +65,12 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
     // PRINT LINE FUNCTION
     else if (funcCall->functionName == "printl")
     {
-        if (funcCall->parameterList.size() != 1)
+        if (funcCall->parameterList.size() > 1)
             throw std::runtime_error("Function [printl] only takes one argument!");
-
-        std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str() << "\n";
+        else if (funcCall->parameterList.size() == 1)
+            std::cout << interpret(funcCall->parameterList[0]).cast_to_string().get_str() << "\n";
+        else
+            std::cout << "\n";
     }
     // CAST TO INT FUNCTION
     else if (funcCall->functionName == "int")

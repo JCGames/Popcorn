@@ -144,9 +144,25 @@ Object Object::cast_to_bool()
     switch (type)
     {
         case ObjectType::STRING:
-            return Object((get_str() == "True" || get_str() == "true") ? true : 
-                ((get_str() == "False" || get_str() == "false") ? false : 
-                throw std::runtime_error("Could not parse string into a boolean value!")));
+
+            if (get_str() == "true" || get_str() == "True")
+            {
+                return Object(true);
+            }
+            else if (get_str() == "false" || get_str() == "False")
+            {
+                return Object(false);
+            }
+
+            int value;
+
+            try {
+                value = std::stoi(get_str());
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Could not cast string to boolean!");
+            }
+
+            return Object(value >= 1);
         case ObjectType::BOOLEAN:
             return Object(get_bool());
         case ObjectType::INTEGER:
