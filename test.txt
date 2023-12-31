@@ -1,6 +1,9 @@
-i = 9
+print("Please give input: ")
 
-while i >= 0 {
-    printl(i)
-    i--
+x = input()
+
+if x == "6321" {
+    printl("You unlocked your account!")
+} else {
+    printl("You did not unlock your account!")
 }

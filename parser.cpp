@@ -43,6 +43,9 @@ Token Parser::peek_next()
 /// @brief Looks for tokens that are not whitespace (END_OF_LINEs are not whitespace!).
 void Parser::move_next_non_wspace()
 {
+    if (is_end_of_statement())
+        throw std::runtime_error("Tried to finish reading a statement that was not complete on line: " + std::to_string(_currentToken.lineNumber));
+
     move_next();
 
     while (_currentToken.type == TokenType::WHITESPACE)
