@@ -94,6 +94,11 @@ bool Parser::is_end_of_statement()
     return _currentToken.type == TokenType::END_OF_LINE || _currentToken.type == TokenType::END_OF_FILE;
 }
 
+bool Parser::is_current_token_number()
+{
+    return _currentToken.type == TokenType::DOUBLE || _currentToken.type == TokenType::INTEGER;
+}
+
 /**
  * Expression stuff below
 */
@@ -385,7 +390,7 @@ Statement* Parser::get_next_statement()
 
         vd->expression = expression;
 
-        move_next_line();
+        move_next_non_wspace_pass_eols();
 
         return vd;
     }
@@ -396,7 +401,7 @@ Statement* Parser::get_next_statement()
         
         Block* block = get_block();
 
-        move_next_line();
+        move_next_non_wspace_pass_eols();
 
         return block;
     }
@@ -405,7 +410,7 @@ Statement* Parser::get_next_statement()
     {
         FunctionCall* funcCall = parse_function_call();
 
-        move_next_line();
+        move_next_non_wspace_pass_eols();
 
         return funcCall;
     }
@@ -431,7 +436,26 @@ Statement* Parser::get_next_statement()
 
             return new While(condition, body);
         }
-        else throw std::runtime_error("Could not find body for while statement on line: " + std::to_string(_currentToken.lineNumber));
+        
+        throw std::runtime_error("Could not find body for while statement on line: " + std::to_string(_currentToken.lineNumber));
+    }
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::INCREMENT)
+    {
+        std::string variableName = _currentToken.value;
+
+        move_next_non_wspace();
+        move_next_non_wspace_pass_eols();
+
+        return new VariableAssignment(variableName, new Expression(new AddOperator(new Variable(variableName), new Integer(1))));
+    }
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT)
+    {
+        std::string variableName = _currentToken.value;
+
+        move_next_non_wspace();
+        move_next_non_wspace_pass_eols();
+
+        return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName), new Integer(1))));
     }
 
     return NULL;

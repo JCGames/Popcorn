@@ -168,6 +168,19 @@ Token Lexer::get_next_token()
         return { TokenType::NOT_EQUALS, "", _currentLineNumber };
     }
     // OPERATORS
+    else if (_current == '+' && peek_next() == '+')
+    {
+        get_next();
+        get_next();
+        return { TokenType::INCREMENT, "", _currentLineNumber };
+    }
+    else if (_current == '-' && peek_next() == '-')
+    {
+        get_next();
+        get_next();
+        return { TokenType::DECREMENT, "", _currentLineNumber };
+    }
+    // OPERATORS 2
     else if (_current == '%')
     {
         get_next();

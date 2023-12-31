@@ -42,6 +42,8 @@ namespace lex
         AND_CONDITION,
         OR_CONDITION,
         MODULUS,
+        INCREMENT,
+        DECREMENT,
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -81,6 +83,8 @@ namespace lex
             case TokenType::AND_CONDITION: return "AND CONDITION";
             case TokenType::OR_CONDITION: return "OR CONDITION";
             case TokenType::MODULUS: return "MODULUS";
+            case TokenType::INCREMENT: return "INCREMENT";
+            case TokenType::DECREMENT: return "DECREMENT";
             default: return "NONE";
         }
     }

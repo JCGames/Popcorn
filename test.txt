@@ -1,7 +1,6 @@
-i = 0
+i = 9
 
-while i < 10
-{
-    printl(i) printl(i)
-    i = i + 1
+while i >= 0 {
+    printl(i)
+    i--
 }
