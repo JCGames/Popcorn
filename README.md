@@ -24,7 +24,9 @@ Eventually files will be ended with the extension `.pop` to run.
 | - | Subtract | 3 |
 | * | Multiply | 4 |
 | % | Modulus | 4 |
-| / | divide | 4 |
+| / | Divide | 4 |
+| ++ | Increments a variable by 1 | not really an operator |
+| -- | Decrements a variable by 1 | not really an operator |
 
 ### Terms
 

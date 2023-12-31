@@ -1,9 +1,0 @@
-print("Please give input: ")
-
-x = input()
-
-if x == "6321" {
-    printl("You unlocked your account!")
-} else {
-    printl("You did not unlock your account!")
-}
