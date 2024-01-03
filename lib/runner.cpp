@@ -5,47 +5,33 @@ using namespace obj;
 
 Runner::Runner() { }
 
-void Runner::add_variable(_Variable variable)
+void Runner::add_variable(_Variable variable, int initialIndex)
 {
-    for (const auto& v : _variables)
+    for (size_t i = initialIndex; i < _variables.size(); ++i)
     {
-        if (v.name == variable.name)
+        if (_variables[i].name == variable.name)
             throw std::runtime_error("Variable " + variable.name + " has already been declared!");
     }
 
     _variables.push_back(variable);
 }
 
-void Runner::remove_variable(std::string name)
-{
-    for (size_t i = _variables.size() - 1; i >= 0; --i)
-    {
-        if (_variables[i].name == name)
-        {
-            _variables.erase(_variables.begin() + i);
-            return;
-        }
-    }
-
-    throw std::runtime_error("Variable " + name + " has lost scope or was never declared!");
-}
-
 _Variable& Runner::get_variable(std::string name)
 {
-    for (auto& v : _variables)
+    for (int i = _variables.size() - 1; i >= 0; --i)
     {
-        if (v.name == name)
-            return v;
+        if (_variables[i].name == name)
+            return _variables[i];
     }
 
     throw std::runtime_error("Variable " + name + " has lost scope or was never declared!");
 }
 
 bool Runner::has_variable(std::string name)
-{    
-    for (const auto& v : _variables)
+{
+    for (int i = _variables.size() - 1; i >= 0; --i)
     {
-        if (v.name == name)
+        if (_variables[i].name == name)
             return true;
     }
 
@@ -58,8 +44,12 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
      * Built in functions
     */
 
+    if (funcCall->functionName == "rdump")
+    {
+        dump_runner();
+    }
     // PRINT FUNCTION
-    if (funcCall->functionName == "print")
+    else if (funcCall->functionName == "print")
     {
         if (funcCall->parameterList.size() != 1)
             throw std::runtime_error("Function [print] only takes one argument!");
@@ -119,8 +109,10 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
                 if (_functionTable[i].funcRef.parameterNames.size() != funcCall->parameterList.size())
                     throw std::runtime_error("The function " + funcCall->functionName + " did not have the correct number of parameters past on line: " + std::to_string(funcCall->get_line_index()));
                 
+                int originalVariableVectorSize = _variables.size();
+
                 for (size_t j = 0; j < _functionTable[i].funcRef.parameterNames.size(); ++j)
-                    add_variable(_Variable(_functionTable[i].funcRef.parameterNames[j], interpret(funcCall->parameterList[j])));
+                    add_variable(_Variable(_functionTable[i].funcRef.parameterNames[j], interpret(funcCall->parameterList[j])), originalVariableVectorSize - 1);
 
                 Object result;
 
@@ -138,7 +130,7 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
                     interpret(stat);
                 }
                 
-                for (size_t j = 0; j < _functionTable[i].funcRef.parameterNames.size(); ++j)
+                for (size_t j = 0; j < _variables.size() - originalVariableVectorSize + 1; ++j)
                     _variables.pop_back();
 
                 return result;

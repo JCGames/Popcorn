@@ -122,22 +122,34 @@ void* Object::get_value() const
 
 bool Object::get_bool()
 {
-    return *(bool*)value;
+    if (type == ObjectType::BOOLEAN)
+        return *(bool*)value;
+    else
+        throw std::runtime_error("Object is not a boolean!");
 }
 
 int Object::get_int()
 {
-    return *(int*)value;
+    if (type == ObjectType::INTEGER)
+        return *(int*)value;
+    else
+        throw std::runtime_error("Object is not a integer!");
 }
 
 double Object::get_double()
 {
-    return *(double*)value;
+    if (type == ObjectType::DOUBLE)
+        return *(double*)value;
+    else
+        throw std::runtime_error("Object is not a double!");
 }
 
 std::string Object::get_str()
 {
-    return *(std::string*)value;
+    if (type == ObjectType::STRING)
+        return *(std::string*)value;
+    else
+        throw std::runtime_error("Object is not a string!");
 }
 
 /**

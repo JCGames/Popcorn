@@ -1,9 +1,0 @@
-
-
-func hello()
-{
-    printl("Hello!")
-    return "Hello!" + 1
-}
-
-printl(hello())

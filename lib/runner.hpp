@@ -34,8 +34,7 @@ namespace run
         std::vector<_Function> _functionTable;
         std::vector<_Variable> _variables;
 
-        void add_variable(_Variable variable);
-        void remove_variable(std::string name);
+        void add_variable(_Variable variable, int initialIndex = 0);
         _Variable& get_variable(std::string name);
         bool has_variable(std::string name);
 

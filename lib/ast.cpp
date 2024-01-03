@@ -37,6 +37,7 @@ static std::string ast::get_statement_type_name(StatementType type)
         case StatementType::OR_CONDITION: return "OR CONDITION";
         case StatementType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
         case StatementType::FUNCTION: return "FUNCTION";
+        case StatementType::RETURN: return "RETURN";
         default: return "UNDEFINED";
     }
 }
