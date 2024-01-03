@@ -2,9 +2,9 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include "lexer.hpp"
-#include "parser.hpp"
-#include "runner.hpp"
+#include "lib/lexer.hpp"
+#include "lib/parser.hpp"
+#include "lib/runner.hpp"
 
 using namespace std;
 

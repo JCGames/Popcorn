@@ -4,16 +4,16 @@ main: main.o lexer.o parser.o runner.o object.o
 main.o: main.cpp
 	g++ -c $<
 
-lexer.o: lexer.cpp
+lexer.o: lib/lexer.cpp
 	g++ -c $<
 
-parser.o: parser.cpp
+parser.o: lib/parser.cpp
 	g++ -c $<
 
-runner.o: runner.cpp
+runner.o: lib/runner.cpp
 	g++ -c $<
 
-object.o: object.cpp
+object.o: lib/object.cpp
 	g++ -c $<
 
 clean:
