@@ -2,6 +2,7 @@
 #include <string>
 #include "parser.hpp"
 
+using namespace prs;
 using namespace ast;
 using namespace lex;
 
@@ -457,6 +458,62 @@ Statement* Parser::get_next_statement()
         move_next_non_wspace_pass_eols();
 
         return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
+    }
+    // FUNCTION
+    else if (_currentToken.type == TokenType::FUNCTION)
+    {
+        move_next_non_wspace();
+
+        if (_currentToken.type != TokenType::WORD)
+            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " did not have a name!");
+
+        Function* function = new Function(_currentToken.value, nullptr, _currentToken.lineNumber);
+
+        move_next_non_wspace();
+
+        if (_currentToken.type != TokenType::OPEN_PARAN)
+            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing an open parenthesis!");
+
+        move_next_non_wspace();
+
+        while (_currentToken.type != TokenType::CLOSE_PARAN && !is_end_of_statement())
+        {
+            if (_currentToken.type != TokenType::WORD)
+                throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " has an invalid parameter!: " + get_token_type_name(_currentToken.type));
+
+            function->parameterNames.push_back(_currentToken.value);
+
+            move_next_non_wspace();
+
+            if (_currentToken.type == TokenType::COMMA)
+                move_next_non_wspace();
+            else if (_currentToken.type != TokenType::CLOSE_PARAN)
+                throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing a comma!");
+        }
+
+        if (_currentToken.type != TokenType::CLOSE_PARAN)
+            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing a close parenthesis!");
+
+        move_next_non_wspace_pass_eols();
+
+        if (_currentToken.type != TokenType::OPEN_BRACKET)
+            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing its body!");
+
+        function->body = get_block();
+
+        move_next_non_wspace_pass_eols();
+
+        return function;
+    }
+    else if (_currentToken.type == TokenType::RETURN)
+    {
+        Return* r = new Return(nullptr, _currentToken.lineNumber);
+
+        move_next_non_wspace();
+
+        r->expression = parse_expression();
+
+        return r;
     }
 
     return NULL;

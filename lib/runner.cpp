@@ -1,6 +1,7 @@
 #include "runner.hpp"
 
 using namespace run;
+using namespace obj;
 
 Runner::Runner() { }
 
@@ -15,15 +16,18 @@ void Runner::add_variable(_Variable variable)
     _variables.push_back(variable);
 }
 
-void Runner::remove_variable(_Variable variable)
+void Runner::remove_variable(std::string name)
 {
-    for (auto iter = _variables.begin(); iter != _variables.end(); ++iter)
+    for (size_t i = _variables.size() - 1; i >= 0; --i)
     {
-        if (iter->name == variable.name)
-            _variables.erase(iter);
+        if (_variables[i].name == name)
+        {
+            _variables.erase(_variables.begin() + i);
+            return;
+        }
     }
 
-    throw std::runtime_error("Variable " + variable.name + " has lost scope or was never declared!");
+    throw std::runtime_error("Variable " + name + " has lost scope or was never declared!");
 }
 
 _Variable& Runner::get_variable(std::string name)
@@ -105,6 +109,43 @@ Object Runner::call_function(ast::FunctionCall* funcCall)
         std::string result;
         getline(std::cin, result);
         return Object(result);
+    }
+    else
+    {
+        for (size_t i = 0; i < _functionTable.size(); ++i)
+        {
+            if (_functionTable[i].name == funcCall->functionName)
+            {
+                if (_functionTable[i].funcRef.parameterNames.size() != funcCall->parameterList.size())
+                    throw std::runtime_error("The function " + funcCall->functionName + " did not have the correct number of parameters past on line: " + std::to_string(funcCall->get_line_index()));
+                
+                for (size_t j = 0; j < _functionTable[i].funcRef.parameterNames.size(); ++j)
+                    add_variable(_Variable(_functionTable[i].funcRef.parameterNames[j], interpret(funcCall->parameterList[j])));
+
+                Object result;
+
+                for (auto stat : _functionTable[i].funcRef.body->statements)
+                {
+                    if (stat->get_type() == ast::StatementType::RETURN)
+                    {
+                        if (ast::Return* r = static_cast<ast::Return*>(stat))
+                        {
+                            result = interpret(r->expression);
+                        }
+                        break;
+                    }
+
+                    interpret(stat);
+                }
+                
+                for (size_t j = 0; j < _functionTable[i].funcRef.parameterNames.size(); ++j)
+                    _variables.pop_back();
+
+                return result;
+            }
+        }
+
+        throw std::runtime_error("The function " + funcCall->functionName + " did not exist!");
     }
 
     return Object();
@@ -336,8 +377,50 @@ Object Runner::interpret(ast::Statement* stat)
     return Object();
 }
 
+void Runner::create_function_table(ast::Statement* stat)
+{
+    if (stat->get_type() == ast::StatementType::FUNCTION)
+    {
+        if (ast::Function* func = static_cast<ast::Function*>(stat))
+        {
+            _functionTable.push_back({ func->functionName, *func });
+        }
+    }
+    else if (stat->get_type() == ast::StatementType::BLOCK)
+    {
+        if (ast::Block* block = static_cast<ast::Block*>(stat))
+        {
+            for (ast::Statement* s : block->statements)
+                create_function_table(s);
+        }
+    }
+}
+
 void Runner::run(ast::AST& ast)
 {
     for (auto stat : ast.statements)
+        create_function_table(stat);
+
+    for (auto stat : ast.statements)
         interpret(stat);
+}
+
+void Runner::dump_runner()
+{
+    printf("========== RUNNER DUMP ==========\n");
+
+    printf("\nFUNCTION TABLE:\n");
+    for (auto& f : _functionTable)
+    {
+        printf("Function Name: %s\n", f.name.c_str());
+    }
+
+    printf("\nVARIABLES:\n");
+    for (auto& v : _variables)
+    {
+        printf("Variable Name: |%s|, Value: ", v.name.c_str());
+        std::cout << v.object.cast_to_string().get_str() << std::endl;
+    }
+
+    printf("\n=================================\n");
 }

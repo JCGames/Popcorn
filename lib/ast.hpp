@@ -39,6 +39,8 @@ namespace ast
         AND_CONDITION,
         OR_CONDITION,
         MODULUS_OPERATOR,
+        FUNCTION,
+        RETURN,
     };
 
     static std::string get_statement_type_name(StatementType type);
@@ -268,6 +270,19 @@ namespace ast
             StatementType get_type() override;
     };
 
+    class Function : public Statement
+    {
+        public:
+            std::string functionName;
+            std::vector<std::string> parameterNames;
+            Block* body;
+
+            Function(std::string functionName, Block* body, int lineIndex);
+            ~Function() override;
+
+            StatementType get_type() override;
+    };
+
     class Negate : public UnaryOperator
     {
         public:
@@ -318,6 +333,17 @@ namespace ast
 
             While(Expression* condition, Block* body, int lineIndex);
             ~While() override;
+
+            StatementType get_type() override;
+    };
+
+    class Return : public Statement
+    {
+        public:
+            Expression* expression;
+
+            Return(Expression* expression, int lineIndex);
+            ~Return() override;
 
             StatementType get_type() override;
     };

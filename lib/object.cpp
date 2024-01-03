@@ -1,6 +1,6 @@
 #include "object.hpp"
 
-using namespace run;
+using namespace obj;
 
 Object::Object()
 {
@@ -114,6 +114,11 @@ void Object::deleteValue(Object& obj)
 /**
  * Getters
 */
+
+void* Object::get_value() const
+{
+    return value;
+}
 
 bool Object::get_bool()
 {

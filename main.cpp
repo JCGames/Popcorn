@@ -38,7 +38,7 @@ int main(int argc, char** args)
          * Parsing ...
         */
 
-        Parser parser(tokens);
+        prs::Parser parser(tokens);
         ast::AST* ast = parser.parse_ast();
 
         if (DEBUG)
@@ -51,8 +51,19 @@ int main(int argc, char** args)
          * Running ...
         */
         
-        Runner runner;
+        if (DEBUG)
+            printf("\n========== OUTPUT ==========\n\n");
+
+        run::Runner runner;
         runner.run(*ast);
+
+        if (DEBUG)
+            printf("\n============================\n\n");
+
+        if (DEBUG)
+        {
+            runner.dump_runner();
+        }
 
         if (ast != NULL)
             delete ast;

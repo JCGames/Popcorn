@@ -112,6 +112,10 @@ Token Lexer::get_next_token()
             return { TokenType::AND_CONDITION, "", _currentLineNumber };
         else if (value == "or")
             return { TokenType::OR_CONDITION, "", _currentLineNumber };
+        else if (value == "func")
+            return { TokenType::FUNCTION, "", _currentLineNumber };
+        else if (value == "return")
+            return { TokenType::RETURN, "", _currentLineNumber };
 
         return { TokenType::WORD, value, _currentLineNumber };
     }

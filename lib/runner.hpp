@@ -9,34 +9,46 @@
 #include "ast.hpp"
 #include "object.hpp"
 
-struct _Variable
+namespace run 
 {
-    std::string name;
-    run::Object object;
-
-    _Variable(std::string name, run::Object object)
+    struct _Function
     {
-        this->name = name;
-        this->object = object;
-    }
-};
+        std::string name;
+        ast::Function& funcRef;
+    };
 
-class Runner
-{
-    std::vector<_Variable> _variables;
+    struct _Variable
+    {
+        std::string name;
+        obj::Object object;
 
-    void add_variable(_Variable variable);
-    void remove_variable(_Variable variable);
-    _Variable& get_variable(std::string name);
-    bool has_variable(std::string name);
+        _Variable(std::string name, obj::Object object)
+        {
+            this->name = name;
+            this->object = object;
+        }
+    };
 
-    run::Object call_function(ast::FunctionCall* funcCall);
-    run::Object interpret(ast::Statement* stat);
+    class Runner
+    {
+        std::vector<_Function> _functionTable;
+        std::vector<_Variable> _variables;
 
-    public:
-        Runner();
+        void add_variable(_Variable variable);
+        void remove_variable(std::string name);
+        _Variable& get_variable(std::string name);
+        bool has_variable(std::string name);
 
-        void run(ast::AST& ast);
-};
+        obj::Object call_function(ast::FunctionCall* funcCall);
+        obj::Object interpret(ast::Statement* stat);
+        void create_function_table(ast::Statement* stat);
+
+        public:
+            Runner();
+            
+            void dump_runner();
+            void run(ast::AST& ast);
+    };
+}
 
 #endif // RUNNER

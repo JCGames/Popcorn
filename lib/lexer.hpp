@@ -44,6 +44,8 @@ namespace lex
         MODULUS,
         INCREMENT,
         DECREMENT,
+        FUNCTION,
+        RETURN,
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -85,6 +87,8 @@ namespace lex
             case TokenType::MODULUS: return "MODULUS";
             case TokenType::INCREMENT: return "INCREMENT";
             case TokenType::DECREMENT: return "DECREMENT";
+            case TokenType::FUNCTION: return "FUNCTION";
+            case TokenType::RETURN: return "RETURN";
             default: return "NONE";
         }
     }

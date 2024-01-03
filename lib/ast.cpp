@@ -36,6 +36,7 @@ static std::string ast::get_statement_type_name(StatementType type)
         case StatementType::AND_CONDITION: return "AND CONDITION";
         case StatementType::OR_CONDITION: return "OR CONDITION";
         case StatementType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
+        case StatementType::FUNCTION: return "FUNCTION";
         default: return "UNDEFINED";
     }
 }
@@ -388,6 +389,26 @@ StatementType FunctionCall::get_type()
 
 #pragma endregion
 
+#pragma region Function
+
+Function::Function(std::string functionName, Block* body, int lineIndex) : Statement(lineIndex)
+{
+    this->functionName = functionName;
+    this->body = body;
+}
+
+Function::~Function()
+{
+    delete body;
+}
+
+StatementType Function::get_type() 
+{
+    return StatementType::FUNCTION;
+}
+
+#pragma endregion
+
 #pragma region Negate
 
 Negate::Negate(Statement* value, int lineIndex) : UnaryOperator(value, lineIndex) { }
@@ -478,6 +499,25 @@ While::~While()
 StatementType While::get_type()
 {
     return StatementType::WHILE;
+}
+
+#pragma endregion
+
+#pragma region Return
+
+Return::Return(Expression* expression, int lineIndex) : Statement(lineIndex)
+{
+    this->expression = expression;
+}
+
+Return::~Return()
+{
+    delete expression;
+}
+
+StatementType Return::get_type()
+{
+    return StatementType::RETURN;
 }
 
 #pragma endregion
@@ -628,6 +668,40 @@ void AST::print_statement(Statement* stat, std::string indent)
                 print_statement(_while->condition, indent + '\t');
                 printf("%sBODY:\n", indent.c_str());
                 print_statement(_while->body, indent + '\t');
+            }
+            break;
+        case StatementType::FUNCTION:
+            if (Function* func = static_cast<Function*>(stat))
+            {
+                printf("%sNAME: %s\n", indent.c_str(), func->functionName.c_str());
+                printf("%sPARAMETERS: [", indent.c_str());
+
+                if (func->parameterNames.size() == 0)
+                {
+                    printf("]\n");
+                }
+                else
+                {
+                    for (size_t i = 0; i < func->parameterNames.size(); ++i)
+                    {
+                        if (i != func->parameterNames.size() - 1)
+                            printf("%s, ", func->parameterNames[i].c_str());
+                        else
+                            printf("%s]\n", func->parameterNames[i].c_str());
+                    }
+                }
+
+                printf("%sBODY:\n", indent.c_str());
+                print_statement(func->body, indent + '\t');
+            }
+            break;
+        case StatementType::RETURN:
+            if (Return* _return = static_cast<Return*>(stat))
+            {
+                if (_return->expression != nullptr)
+                {
+                    print_statement(_return->expression, indent + '\t');
+                }
             }
             break;
     }

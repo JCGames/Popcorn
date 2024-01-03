@@ -13,7 +13,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace run 
+namespace obj 
 {
     enum class ObjectType
     {
@@ -45,6 +45,7 @@ namespace run
              * Getters
             */
 
+            void* get_value() const;
             bool get_bool();
             int get_int();
             double get_double();

@@ -6,42 +6,45 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 
-#define ERR_TOKEN { TokenType::ERR, "ERROR", -1 }
-
-class Parser
+namespace prs
 {
-    std::vector<lex::Token> _tokens;
-    int _index;
-    lex::Token _currentToken;
+    #define ERR_TOKEN { TokenType::ERR, "ERROR", -1 }
 
-    void move_next();
-    lex::Token peek_next();
-    lex::Token peek_next_non_wspace();
-    void move_next_non_wspace();
-    void move_next_line();
-    void move_next_non_wspace_pass_eols();
-    bool is_end_of_statement();
-    bool is_current_token_number();
+    class Parser
+    {
+        std::vector<lex::Token> _tokens;
+        int _index;
+        lex::Token _currentToken;
 
-    ast::Expression* parse_expression();
-    ast::Statement* parse_condition();
-    ast::Statement* parse_addend();
-    ast::Statement* parse_term();
-    ast::Statement* parse_equality();
-    ast::Statement* parse_factor();
+        void move_next();
+        lex::Token peek_next();
+        lex::Token peek_next_non_wspace();
+        void move_next_non_wspace();
+        void move_next_line();
+        void move_next_non_wspace_pass_eols();
+        bool is_end_of_statement();
+        bool is_current_token_number();
 
-    ast::If* parse_if();
-    ast::Else* parse_else();
+        ast::Expression* parse_expression();
+        ast::Statement* parse_condition();
+        ast::Statement* parse_addend();
+        ast::Statement* parse_term();
+        ast::Statement* parse_equality();
+        ast::Statement* parse_factor();
 
-    ast::Statement* get_next_statement();
-    ast::FunctionCall* parse_function_call();
-    ast::Block* get_block();
+        ast::If* parse_if();
+        ast::Else* parse_else();
 
-    public:
-        Parser();
-        Parser(const std::vector<lex::Token>& tokens);
+        ast::Statement* get_next_statement();
+        ast::FunctionCall* parse_function_call();
+        ast::Block* get_block();
 
-        ast::AST* parse_ast();
-};
+        public:
+            Parser();
+            Parser(const std::vector<lex::Token>& tokens);
+
+            ast::AST* parse_ast();
+    };
+}
 
 #endif // PARSER
