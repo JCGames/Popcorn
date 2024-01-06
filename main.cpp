@@ -5,6 +5,7 @@
 #include "lib/lexer.hpp"
 #include "lib/parser.hpp"
 #include "lib/runner.hpp"
+#include "lib/console.hpp"
 
 using namespace std;
 
@@ -20,6 +21,8 @@ int main(int argc, char** args)
 
     if (argc > 1)
     {
+        Console::init();
+
         /**
          * Lexing ...
         */

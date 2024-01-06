@@ -46,6 +46,7 @@ namespace lex
         DECREMENT,
         FUNCTION,
         RETURN,
+        POWER,
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -89,6 +90,7 @@ namespace lex
             case TokenType::DECREMENT: return "DECREMENT";
             case TokenType::FUNCTION: return "FUNCTION";
             case TokenType::RETURN: return "RETURN";
+            case TokenType::POWER: return "POWER";
             default: return "NONE";
         }
     }

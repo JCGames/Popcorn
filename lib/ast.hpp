@@ -41,6 +41,7 @@ namespace ast
         MODULUS_OPERATOR,
         FUNCTION,
         RETURN,
+        POWER_OPERATOR,
     };
 
     static std::string get_statement_type_name(StatementType type);
@@ -124,6 +125,14 @@ namespace ast
     {
         public:
             EqualsOperator(Statement* left, Statement* right, int lineIndex);
+
+            StatementType get_type() override;
+    };
+
+    class PowerOperator : public BinaryOperator
+    {
+        public:
+            PowerOperator(Statement* left, Statement* right, int lineIndex);
 
             StatementType get_type() override;
     };
@@ -351,7 +360,7 @@ namespace ast
     class AST
     {
         public:
-            std::vector<Statement*> statements;
+            Block* root;
 
             ~AST();
             void print();

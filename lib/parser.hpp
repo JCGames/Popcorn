@@ -12,32 +12,35 @@ namespace prs
 
     class Parser
     {
+        ast::AST* _ast;
+
         std::vector<lex::Token> _tokens;
         int _index;
         lex::Token _currentToken;
+
+        void parse_error(std::string message);
 
         void move_next();
         lex::Token peek_next();
         lex::Token peek_next_non_wspace();
         void move_next_non_wspace();
-        void move_next_line();
         void move_next_non_wspace_pass_eols();
         bool is_end_of_statement();
-        bool is_current_token_number();
 
         ast::Expression* parse_expression();
         ast::Statement* parse_condition();
+        ast::Statement* parse_equality();
         ast::Statement* parse_addend();
         ast::Statement* parse_term();
-        ast::Statement* parse_equality();
+        ast::Statement* parse_power();
         ast::Statement* parse_factor();
 
         ast::If* parse_if();
         ast::Else* parse_else();
 
-        ast::Statement* get_next_statement();
+        ast::Statement* parse_next_statement();
         ast::FunctionCall* parse_function_call();
-        ast::Block* get_block();
+        ast::Block* parse_block();
 
         public:
             Parser();

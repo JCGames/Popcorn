@@ -390,10 +390,10 @@ void Runner::create_function_table(ast::Statement* stat)
 
 void Runner::run(ast::AST& ast)
 {
-    for (auto stat : ast.statements)
+    for (auto stat : ast.root->statements)
         create_function_table(stat);
 
-    for (auto stat : ast.statements)
+    for (auto stat : ast.root->statements)
         interpret(stat);
 }
 

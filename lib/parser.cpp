@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <string>
+#include "console.hpp"
 #include "parser.hpp"
 
 using namespace prs;
@@ -19,11 +20,23 @@ Parser::Parser(const std::vector<Token>& tokens)
     _currentToken = ERR_TOKEN;
 }
 
+void Parser::parse_error(std::string message)
+{
+    std::string result = "\nPARSING ERROR [LINE: " + std::to_string(_currentToken.lineNumber) + "]: " + message;
+    
+    Console::set_console_color(12);
+    printf(result.c_str());
+    Console::set_console_to_default();
+
+    delete _ast;
+    exit(1);
+}
+
 /// @brief Moves to the next token. Next token could be whitespace.
 void Parser::move_next()
 {
     if (_index >= (int)_tokens.size())
-        throw std::runtime_error("Cannot read another token because the end of the file has been reached on token type: " + get_token_type_name(_currentToken.type));
+        parse_error("End of file has been reached!");
 
     ++_index;
     _currentToken = _tokens[_index];
@@ -44,9 +57,6 @@ Token Parser::peek_next()
 /// @brief Looks for tokens that are not whitespace (END_OF_LINEs are not whitespace!).
 void Parser::move_next_non_wspace()
 {
-    if (is_end_of_statement())
-        throw std::runtime_error("Tried to finish reading a statement that was not complete on line: " + std::to_string(_currentToken.lineNumber));
-
     move_next();
 
     while (_currentToken.type == TokenType::WHITESPACE)
@@ -65,24 +75,6 @@ Token Parser::peek_next_non_wspace()
     return result;
 }
 
-/// @brief Moves to the first token of the next line.
-void Parser::move_next_line()
-{
-    int nextLine = _currentToken.lineNumber + 1;
-    bool hasFoundEndOfLineToken = false;
-
-    while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
-    {
-        move_next();
-        
-        if (_currentToken.type == TokenType::END_OF_LINE)
-            hasFoundEndOfLineToken = true;
-
-        if (hasFoundEndOfLineToken && _currentToken.type != TokenType::WHITESPACE && _currentToken.type != TokenType::END_OF_LINE)
-            break;
-    }
-}
-
 /// @brief Moves to the first non-whitespace tokens and advances through each line to find it
 void Parser::move_next_non_wspace_pass_eols()
 {
@@ -96,11 +88,6 @@ void Parser::move_next_non_wspace_pass_eols()
 bool Parser::is_end_of_statement()
 {
     return _currentToken.type == TokenType::END_OF_LINE || _currentToken.type == TokenType::END_OF_FILE;
-}
-
-bool Parser::is_current_token_number()
-{
-    return _currentToken.type == TokenType::DOUBLE || _currentToken.type == TokenType::INTEGER;
 }
 
 /**
@@ -210,27 +197,44 @@ Statement* Parser::parse_addend()
 
 Statement* Parser::parse_term()
 {
-    Statement* left = parse_factor();
+    Statement* left = parse_power();
 
     while (_currentToken.type == TokenType::MUL || _currentToken.type == TokenType::DIV || _currentToken.type == TokenType::MODULUS)
     {
         if (_currentToken.type == TokenType::MUL)
         {
             move_next_non_wspace();
-            Statement* right = parse_factor();
+            Statement* right = parse_power();
             left = new MultiplyOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::DIV)
         {
             move_next_non_wspace();
-            Statement* right = parse_factor();
+            Statement* right = parse_power();
             left = new DivideOperator(left, right, _currentToken.lineNumber);
         }
         else if (_currentToken.type == TokenType::MODULUS)
         {
             move_next_non_wspace();
-            Statement* right = parse_factor();
+            Statement* right = parse_power();
             left = new ModulusOperator(left, right, _currentToken.lineNumber);
+        }
+    }
+
+    return left;
+}
+
+ast::Statement* Parser::parse_power()
+{
+    Statement* left = parse_factor();
+
+    while (_currentToken.type == TokenType::POWER)
+    {
+        if (_currentToken.type == TokenType::POWER)
+        {
+            move_next_non_wspace();
+            Statement* right = parse_factor();
+            left = new PowerOperator(left, right, _currentToken.lineNumber);
         }
     }
 
@@ -245,7 +249,6 @@ Statement* Parser::parse_factor()
     if (_currentToken.type == TokenType::OPEN_PARAN)
     {
         move_next_non_wspace();
-
         result = parse_expression();
 
         if (_currentToken.type != TokenType::CLOSE_PARAN)
@@ -318,285 +321,90 @@ Statement* Parser::parse_factor()
 
 If* Parser::parse_if()
 {
-    move_next_non_wspace();
-    Expression* condition = parse_expression();
-
-    if (is_end_of_statement())
-        move_next_non_wspace_pass_eols();
-    
-    if (_currentToken.type == TokenType::OPEN_BRACKET)
-    {
-        Block* body = get_block();
-        move_next_non_wspace_pass_eols();
-
-        If* result = new If(condition, body, _currentToken.lineNumber);
-
-        // ELSE IF CASE
-        if (_currentToken.type == TokenType::ELSE && peek_next_non_wspace().type == TokenType::IF)
-        {
-            move_next_non_wspace();
-            result->elseOrIf = parse_if();
-        }
-        // ELSE CASE
-        else if (_currentToken.type == TokenType::ELSE)
-        {
-            result->elseOrIf = parse_else();
-        }
-
-        return result;
-    }
-    else throw std::runtime_error("Could not find body for if statement on line: " + std::to_string(_currentToken.lineNumber));
+    return nullptr;
 }
 
 Else* Parser::parse_else()
 {
-    move_next_non_wspace_pass_eols();
-
-    if (_currentToken.type == TokenType::OPEN_BRACKET)
-    {
-        Block* body = get_block();
-        move_next_non_wspace_pass_eols();
-
-        return new Else(body, _currentToken.lineNumber);
-    }
-    else throw std::runtime_error("Could not find body for else statement on line: " + std::to_string(_currentToken.lineNumber));
+    return nullptr;
 }
 
 /**
  * Meat and potatos of parsing below
 */
 
-Statement* Parser::get_next_statement()
+/// @brief Should always end at the end of a statement line
+Statement* Parser::parse_next_statement()
 {
-    // move to the next non whitespace token if current token is a whitespace
-    if (_currentToken.type == TokenType::WHITESPACE || _currentToken.type == TokenType::END_OF_LINE)
-        move_next_non_wspace_pass_eols();
-
-    // COMMENT
-    if (_currentToken.type == TokenType::COMMENT)
-    {
-        move_next_line();
-        return NULL;
-    }
-    // VARIABLE ASSIGNMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
-    {
-        VariableAssignment* vd = new VariableAssignment(_currentToken.value, NULL, _currentToken.lineNumber);
-
-        move_next_non_wspace();
-        move_next_non_wspace();
-        Expression* expression = parse_expression();
-
-        if (expression == NULL)
-            throw std::runtime_error("Cannot parse expression on line: " + std::to_string(_currentToken.lineNumber));
-
-        if (!is_end_of_statement())
-            throw std::runtime_error("Variable assignment on line " + std::to_string(_currentToken.lineNumber) + " did not end!");
-
-        vd->expression = expression;
-
-        move_next_non_wspace_pass_eols();
-
-        return vd;
-    }
-    // BLOCK
-    else if (_currentToken.type == TokenType::OPEN_BRACKET)
-    {
-        move_next();
-        Block* block = get_block();
-        move_next_non_wspace_pass_eols();
-
-        return block;
-    }
-    // FUNCTION CALL
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::OPEN_PARAN)
-    {
-        FunctionCall* funcCall = parse_function_call();
-        move_next_non_wspace_pass_eols();
-
-        return funcCall;
-    }
-    // IF STATEMENT
-    else if (_currentToken.type == TokenType::IF)
-    {
-        return parse_if();
-    }
-    // WHILE STATEMENT
-    else if (_currentToken.type == TokenType::WHILE)
-    {
-        move_next_non_wspace();
-
-        Expression* condition = parse_expression();
-
-        if (is_end_of_statement())
-            move_next_non_wspace_pass_eols();
-
-        if (_currentToken.type == TokenType::OPEN_BRACKET)
-        {
-            Block* body = get_block();
-            move_next_non_wspace_pass_eols();
-
-            return new While(condition, body, _currentToken.lineNumber);
-        }
-        
-        throw std::runtime_error("Could not find body for while statement on line: " + std::to_string(_currentToken.lineNumber));
-    }
-    // INCREMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::INCREMENT)
-    {
-        std::string variableName = _currentToken.value;
-        move_next_non_wspace();
-        move_next_non_wspace_pass_eols();
-
-        return new VariableAssignment(variableName, new Expression(new AddOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
-    }
-    // DECREMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT)
-    {
-        std::string variableName = _currentToken.value;
-        move_next_non_wspace();
-        move_next_non_wspace_pass_eols();
-
-        return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
-    }
-    // FUNCTION
-    else if (_currentToken.type == TokenType::FUNCTION)
-    {
-        move_next_non_wspace();
-
-        if (_currentToken.type != TokenType::WORD)
-            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " did not have a name!");
-
-        Function* function = new Function(_currentToken.value, nullptr, _currentToken.lineNumber);
-
-        move_next_non_wspace();
-
-        if (_currentToken.type != TokenType::OPEN_PARAN)
-            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing an open parenthesis!");
-
-        move_next_non_wspace();
-
-        while (_currentToken.type != TokenType::CLOSE_PARAN && !is_end_of_statement())
-        {
-            if (_currentToken.type != TokenType::WORD)
-                throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " has an invalid parameter!: " + get_token_type_name(_currentToken.type));
-
-            function->parameterNames.push_back(_currentToken.value);
-
-            move_next_non_wspace();
-
-            if (_currentToken.type == TokenType::COMMA)
-                move_next_non_wspace();
-            else if (_currentToken.type != TokenType::CLOSE_PARAN)
-                throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing a comma!");
-        }
-
-        if (_currentToken.type != TokenType::CLOSE_PARAN)
-            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing a close parenthesis!");
-
-        move_next_non_wspace_pass_eols();
-
-        if (_currentToken.type != TokenType::OPEN_BRACKET)
-            throw std::runtime_error("Function on line " + std::to_string(_currentToken.lineNumber) + " is missing its body!");
-
-        function->body = get_block();
-
-        move_next_non_wspace_pass_eols();
-
-        return function;
-    }
-    else if (_currentToken.type == TokenType::RETURN)
-    {
-        Return* r = new Return(nullptr, _currentToken.lineNumber);
-
-        move_next_non_wspace();
-
-        r->expression = parse_expression();
-
-        return r;
-    }
-
-    return NULL;
+    return nullptr;
 }
 
 FunctionCall* Parser::parse_function_call()
 {
-    FunctionCall* funcCall = new FunctionCall(_currentToken.value, _currentToken.lineNumber);
-
-    move_next_non_wspace();
-    move_next_non_wspace();
-
-    while (_currentToken.type != TokenType::CLOSE_PARAN && !is_end_of_statement())
-    {
-        Expression* expression = parse_expression();
-
-        funcCall->parameterList.push_back(expression);
-
-        if (_currentToken.type != TokenType::COMMA && _currentToken.type != TokenType::CLOSE_PARAN)
-            throw std::runtime_error("Parameters for function call were not passed in correctly on line: " + std::to_string(_currentToken.lineNumber));
-        
-        if (_currentToken.type == TokenType::CLOSE_PARAN)
-            break;
-
-        move_next_non_wspace();
-    }
-
-    if (is_end_of_statement())
-        throw std::runtime_error("Did not close function call on line: " + std::to_string(_currentToken.lineNumber));
-    
-    return funcCall;
+    return nullptr;
 }
 
-Block* Parser::get_block()
+/// @brief Must start on an OPEN_BRACKET to start an inner block and nothing to start a file block
+Block* Parser::parse_block()
 {
-    Block* result = new Block(_currentToken.lineNumber);
+    Block* block = new Block(_currentToken.lineNumber);
+
+    move_next_non_wspace_pass_eols();
 
     if (_currentToken.type == TokenType::OPEN_BRACKET)
-        move_next();
-    
-    int lastIndex = _index - 1;
-
-    while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
     {
-        if (lastIndex == _index)
-            throw std::runtime_error("Unable to parse statement on line: " + std::to_string(_currentToken.lineNumber));
+        while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
+        {
+            // for comments
+            if (_currentToken.type == TokenType::COMMENT)
+            {
+                int nextLine = _currentToken.lineNumber + 1;
 
-        lastIndex = _index;
+                while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+                    move_next();
+            }
 
-        Statement* statement = get_next_statement();
+            Statement* stmt = parse_next_statement();
 
-        if (statement != NULL)
-            result->statements.push_back(statement);
+            if (stmt != nullptr)
+                block->statements.push_back(stmt);
+
+            move_next_non_wspace_pass_eols();
+        }
+
+        if (_currentToken.type != TokenType::CLOSED_BRACKET)
+            parse_error("Missing a closed bracket }.");
+    }
+    else
+    {
+        while (_currentToken.type != TokenType::END_OF_FILE)
+        {
+            // for comments
+            if (_currentToken.type == TokenType::COMMENT)
+            {
+                int nextLine = _currentToken.lineNumber + 1;
+
+                while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+                    move_next();
+            }
+
+            Statement* stmt = parse_next_statement();
+
+            if (stmt != nullptr)
+                block->statements.push_back(stmt);
+
+            move_next_non_wspace_pass_eols();
+        }
     }
 
-    if (_currentToken.type != TokenType::CLOSED_BRACKET)
-        throw std::runtime_error("Body was not closed correctly on line: " + std::to_string(_currentToken.lineNumber) + "\nToken found was: " + get_token_type_name(_currentToken.type).c_str());
-
-    return result;
+    return block;
 }
 
 /// @brief Parses a list of tokens and returns its Abstract Syntax Tree
 /// @return Abstract Syntax Tree (AST*)
 AST* Parser::parse_ast()
 {
-    AST* result = new AST();
-    move_next(); // moves to the first token
-
-    int lastIndex = _index - 1;
-
-    while (_currentToken.type != TokenType::END_OF_FILE)
-    {
-        if (lastIndex == _index)
-            throw std::runtime_error("Unable to parse statement on line: " + std::to_string(_currentToken.lineNumber));
-
-        lastIndex = _index;
-
-        Statement* statement = get_next_statement();
-
-        if (statement != NULL)
-            result->statements.push_back(statement);
-    }
-
-    // result->block = get_block(TokenType::END_OF_FILE);
-    return result;
+    _ast = new AST();
+    _ast->root = parse_block();
+    return _ast;
 }

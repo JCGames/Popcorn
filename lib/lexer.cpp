@@ -189,6 +189,11 @@ Token Lexer::get_next_token()
         return { TokenType::DECREMENT, "", _currentLineNumber };
     }
     // OPERATORS 2
+    else if (_current == '^')
+    {
+        get_next();
+        return { TokenType::POWER, "", _currentLineNumber };
+    }
     else if (_current == '%')
     {
         get_next();

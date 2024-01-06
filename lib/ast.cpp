@@ -38,6 +38,7 @@ static std::string ast::get_statement_type_name(StatementType type)
         case StatementType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
         case StatementType::FUNCTION: return "FUNCTION";
         case StatementType::RETURN: return "RETURN";
+        case StatementType::POWER_OPERATOR: return "POWER OPERATOR";
         default: return "UNDEFINED";
     }
 }
@@ -169,6 +170,17 @@ EqualsOperator::EqualsOperator(Statement* left, Statement* right, int lineIndex)
 StatementType EqualsOperator::get_type()
 {
     return StatementType::EQUALS_OPERATOR;
+}
+
+#pragma endregion
+
+#pragma region PowerOperator
+
+PowerOperator::PowerOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
+
+StatementType PowerOperator::get_type()
+{
+    return StatementType::POWER_OPERATOR;
 }
 
 #pragma endregion
@@ -527,34 +539,30 @@ StatementType Return::get_type()
 
 AST::~AST()
 {
-    for (auto stmt : statements)
-    {
-        if (stmt != NULL)
-            delete stmt;
-    }
+    delete root;
 }
 
 void AST::print()
 {
-    for (auto stmt : statements)
+    for (auto stmt : root->statements)
         print_statement(stmt, "");
 }
 
-void AST::print_statement(Statement* stat, std::string indent)
+void AST::print_statement(Statement* stmt, std::string indent)
 {
-    if (stat == NULL)
+    if (stmt == NULL)
     {
         printf("NULL\n");
         return;
     }
 
-    printf("%s%s\n", indent.c_str(), get_statement_type_name(stat->get_type()).c_str());
-    switch (stat->get_type())
+    printf("%s%s\n", indent.c_str(), get_statement_type_name(stmt->get_type()).c_str());
+    switch (stmt->get_type())
     {
         case StatementType::NONE:
             break;
         case StatementType::UNARY_OPERATOR:
-            if (UnaryOperator* value = static_cast<UnaryOperator*>(stat))
+            if (UnaryOperator* value = static_cast<UnaryOperator*>(stmt))
                 print_statement(value->value, indent + '\t');
             break;
         case StatementType::BINARY_OPERATOR:
@@ -571,49 +579,50 @@ void AST::print_statement(Statement* stat, std::string indent)
         case StatementType::AND_CONDITION:
         case StatementType::OR_CONDITION:
         case StatementType::MODULUS_OPERATOR:
+        case StatementType::POWER_OPERATOR:
             printf("%sLEFT:\n", indent.c_str());
-            if (BinaryOperator* value = static_cast<BinaryOperator*>(stat))
+            if (BinaryOperator* value = static_cast<BinaryOperator*>(stmt))
                 print_statement(value->left, indent + '\t');
             printf("%sRIGHT:\n", indent.c_str());
-            if (BinaryOperator* value = static_cast<BinaryOperator*>(stat))
+            if (BinaryOperator* value = static_cast<BinaryOperator*>(stmt))
                 print_statement(value->right, indent + '\t');
             break;
         case StatementType::DOUBLE:
-            if (Double* _double = static_cast<Double*>(stat))
+            if (Double* _double = static_cast<Double*>(stmt))
                 printf("%s%f\n", indent.c_str(), _double->value);
             break;
         case StatementType::INTEGER:
-            if (Integer* integer = static_cast<Integer*>(stat))
+            if (Integer* integer = static_cast<Integer*>(stmt))
                 printf("%s%i\n", indent.c_str(), integer->value);
             break;
         case StatementType::STRING:
-            if (String* str = static_cast<String*>(stat))
+            if (String* str = static_cast<String*>(stmt))
                 printf("%s%s\n", indent.c_str(), str->value.c_str());
             break;
         case StatementType::EXPRESSION:
-            if (Expression* exp = static_cast<Expression*>(stat))
+            if (Expression* exp = static_cast<Expression*>(stmt))
                 print_statement(exp->root, indent + '\t');
             break;
         case StatementType::VARIABLE_ASSIGNMENT:
-            if (VariableAssignment* varDec = static_cast<VariableAssignment*>(stat))
+            if (VariableAssignment* varDec = static_cast<VariableAssignment*>(stmt))
             {
                 printf("%sNAME: |%s|\n", indent.c_str(), varDec->variableName.c_str());
                 print_statement(varDec->expression, indent + '\t');
             }
             break;
         case StatementType::BLOCK:
-            if (Block* block = static_cast<Block*>(stat))
+            if (Block* block = static_cast<Block*>(stmt))
             {
                 for (auto statement : block->statements)
                     print_statement(statement, indent + '\t');
             }
             break;
         case StatementType::VARIABLE:
-            if (Variable* variable = static_cast<Variable*>(stat))
+            if (Variable* variable = static_cast<Variable*>(stmt))
                 printf("%sNAME: %s\n", indent.c_str(), variable->name.c_str());
             break;
         case StatementType::FUNCTION_CALL:
-            if (FunctionCall* funcCall = static_cast<FunctionCall*>(stat))
+            if (FunctionCall* funcCall = static_cast<FunctionCall*>(stmt))
             {
                 printf("%sFunction Name: %s\n", indent.c_str(), funcCall->functionName.c_str());
                 printf("%s---PARAMETER LIST:\n", indent.c_str());
@@ -622,13 +631,13 @@ void AST::print_statement(Statement* stat, std::string indent)
             }
             break;
         case StatementType::NEGATE:
-            if (Negate* negate = static_cast<Negate*>(stat))
+            if (Negate* negate = static_cast<Negate*>(stmt))
             {
                 print_statement(negate->value, indent + '\t');
             }
             break;
         case StatementType::BOOLEAN:
-            if (Boolean* b = static_cast<Boolean*>(stat))
+            if (Boolean* b = static_cast<Boolean*>(stmt))
             {
                 if (b->value)
                 {
@@ -641,7 +650,7 @@ void AST::print_statement(Statement* stat, std::string indent)
             }
             break;
         case StatementType::IF:
-            if (If* _if = static_cast<If*>(stat))
+            if (If* _if = static_cast<If*>(stmt))
             {
                 printf("%sCONDITION:\n", indent.c_str());
                 print_statement(_if->condition, indent + '\t');
@@ -656,14 +665,14 @@ void AST::print_statement(Statement* stat, std::string indent)
             }
             break;
         case StatementType::ELSE:
-            if (Else* _else = static_cast<Else*>(stat))
+            if (Else* _else = static_cast<Else*>(stmt))
             {
                 printf("%sBODY:\n", indent.c_str());
                 print_statement(_else->body, indent + '\t');
             }
             break;
         case StatementType::WHILE:
-            if (While* _while = static_cast<While*>(stat))
+            if (While* _while = static_cast<While*>(stmt))
             {
                 printf("%sCONDITION:\n", indent.c_str());
                 print_statement(_while->condition, indent + '\t');
@@ -672,7 +681,7 @@ void AST::print_statement(Statement* stat, std::string indent)
             }
             break;
         case StatementType::FUNCTION:
-            if (Function* func = static_cast<Function*>(stat))
+            if (Function* func = static_cast<Function*>(stmt))
             {
                 printf("%sNAME: %s\n", indent.c_str(), func->functionName.c_str());
                 printf("%sPARAMETERS: [", indent.c_str());
@@ -697,7 +706,7 @@ void AST::print_statement(Statement* stat, std::string indent)
             }
             break;
         case StatementType::RETURN:
-            if (Return* _return = static_cast<Return*>(stat))
+            if (Return* _return = static_cast<Return*>(stmt))
             {
                 if (_return->expression != nullptr)
                 {
