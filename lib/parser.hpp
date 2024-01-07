@@ -17,6 +17,7 @@ namespace prs
         std::vector<lex::Token> _tokens;
         int _index;
         lex::Token _currentToken;
+        bool _isInChildBlock;
 
         void error(std::string message);
 

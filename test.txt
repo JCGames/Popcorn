@@ -1,1 +1,6 @@
-x = 2
+i = 0
+
+while i < 10 {
+    printl(i)
+    i++
+}
