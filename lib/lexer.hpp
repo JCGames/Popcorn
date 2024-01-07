@@ -100,6 +100,7 @@ namespace lex
         TokenType type;
         std::string value;
         int lineNumber;
+        int columnNumber;
     };
 
     static void print_token(const Token& token)
@@ -113,6 +114,7 @@ namespace lex
         std::vector<Token> _tokens;
         char _current;
         int _currentLineNumber;
+        int _currentColumnNumber;
 
         void get_next();
         char peek_next();

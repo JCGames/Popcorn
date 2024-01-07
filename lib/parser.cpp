@@ -20,13 +20,25 @@ Parser::Parser(const std::vector<Token>& tokens)
     _currentToken = ERR_TOKEN;
 }
 
-void Parser::parse_error(std::string message)
+void Parser::error(std::string message)
 {
-    std::string result = "\nPARSING ERROR [LINE: " + std::to_string(_currentToken.lineNumber) + "]: " + message;
+    printf("\n");
+
+    #ifdef _WIN32
+        Console::set_console_color(12);
+    #elif __linux__
+        printf("\x1B[31m");
+    #endif
     
-    Console::set_console_color(12);
-    printf(result.c_str());
-    Console::set_console_to_default();
+    printf("[LINE: %i, COLUMN: %i] [TOKEN: (%s, %s)]: %s", _currentToken.lineNumber, _currentToken.columnNumber, get_token_type_name(_currentToken.type).c_str(), _currentToken.value.c_str(), message.c_str());
+
+    #ifdef _WIN32
+        Console::set_console_to_default();
+    #elif __linux__
+        printf("\033[0m");
+    #endif
+
+    printf("\n");
 
     delete _ast;
     exit(1);
@@ -35,8 +47,8 @@ void Parser::parse_error(std::string message)
 /// @brief Moves to the next token. Next token could be whitespace.
 void Parser::move_next()
 {
-    if (_index >= (int)_tokens.size())
-        parse_error("End of file has been reached!");
+    if (_index + 1 >= (int)_tokens.size())
+        error("End of file has been reached!");
 
     ++_index;
     _currentToken = _tokens[_index];
@@ -50,7 +62,7 @@ Token Parser::peek_next()
 
     if (_index + 1 < (int)_tokens.size())
         result = _tokens[_index + 1];
-
+    
     return result;
 }
 
@@ -224,7 +236,7 @@ Statement* Parser::parse_term()
     return left;
 }
 
-ast::Statement* Parser::parse_power()
+Statement* Parser::parse_power()
 {
     Statement* left = parse_factor();
 
@@ -308,7 +320,7 @@ Statement* Parser::parse_factor()
     // ERROR
     else
     {
-        throw std::runtime_error("The token with the value of [Token Type:" + get_token_type_name(_currentToken.type) + ", Token Value |" + _currentToken.value + "|] on line " + std::to_string(_currentToken.lineNumber) + " was not a term.");
+        error("Not a term."); 
     }
 
     move_next_non_wspace();
@@ -336,6 +348,32 @@ Else* Parser::parse_else()
 /// @brief Should always end at the end of a statement line
 Statement* Parser::parse_next_statement()
 {
+    if (_currentToken.type == TokenType::COMMENT)
+    {
+        int nextLine = _currentToken.lineNumber + 1;
+
+        while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+            move_next();
+
+        return nullptr;
+    }
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
+    {
+        VariableAssignment* va = new VariableAssignment(_currentToken.value, nullptr, _currentToken.lineNumber);
+
+        move_next_non_wspace();
+        move_next_non_wspace();
+
+        va->expression = parse_expression();
+
+        if (!is_end_of_statement())
+            error("Inccorrect variable assignment.");
+        
+        return va;
+    }
+
+    error("Could not read statement.");
+
     return nullptr;
 }
 
@@ -349,49 +387,40 @@ Block* Parser::parse_block()
 {
     Block* block = new Block(_currentToken.lineNumber);
 
-    move_next_non_wspace_pass_eols();
-
     if (_currentToken.type == TokenType::OPEN_BRACKET)
     {
+        move_next_non_wspace_pass_eols();
+
         while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
         {
-            // for comments
-            if (_currentToken.type == TokenType::COMMENT)
-            {
-                int nextLine = _currentToken.lineNumber + 1;
-
-                while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
-                    move_next();
-            }
-
             Statement* stmt = parse_next_statement();
 
             if (stmt != nullptr)
                 block->statements.push_back(stmt);
+
+            if (_currentToken.type == TokenType::CLOSED_BRACKET || _currentToken.type == TokenType::END_OF_FILE)
+                break;
 
             move_next_non_wspace_pass_eols();
         }
 
         if (_currentToken.type != TokenType::CLOSED_BRACKET)
-            parse_error("Missing a closed bracket }.");
+            error("Missing a closed bracket }.");
     }
     else
     {
+        if (_currentToken.type == TokenType::WHITESPACE)
+            move_next_non_wspace_pass_eols();
+
         while (_currentToken.type != TokenType::END_OF_FILE)
         {
-            // for comments
-            if (_currentToken.type == TokenType::COMMENT)
-            {
-                int nextLine = _currentToken.lineNumber + 1;
-
-                while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
-                    move_next();
-            }
-
             Statement* stmt = parse_next_statement();
 
             if (stmt != nullptr)
                 block->statements.push_back(stmt);
+
+            if (_currentToken.type == TokenType::END_OF_FILE)
+                break;
 
             move_next_non_wspace_pass_eols();
         }
@@ -405,6 +434,7 @@ Block* Parser::parse_block()
 AST* Parser::parse_ast()
 {
     _ast = new AST();
-    _ast->root = parse_block();
+    move_next();
+    _ast->root = parse_block(); 
     return _ast;
 }

@@ -12,6 +12,7 @@ Lexer::Lexer(const std::string& fileName)
 
     get_next(); // sets _current
     _currentLineNumber = 1;
+    _currentColumnNumber = 0;
 }
 
 Lexer::~Lexer()
@@ -23,6 +24,7 @@ Lexer::~Lexer()
 void Lexer::get_next()
 {
     _current = _ifs->get();
+    ++_currentColumnNumber;
 }
 
 char Lexer::peek_next()
@@ -42,15 +44,18 @@ Token Lexer::get_next_token()
     // END OF FILE
     if (is_end_of_file())
     {
-        return { TokenType::END_OF_FILE, "", _currentLineNumber };
+        return { TokenType::END_OF_FILE, "", _currentLineNumber, _currentColumnNumber };
     }
     // END OF LINE
     else if (_current == '\n' || _current == ';')
     {
         int value = _currentLineNumber;
 
-        if (_current != ';')
+        if (_current != ';') 
+        {
             ++_currentLineNumber;
+            _currentColumnNumber = -1;
+        }
 
         get_next();
         return { TokenType::END_OF_LINE, "", value };
@@ -61,7 +66,7 @@ Token Lexer::get_next_token()
         while (iswspace(_current) && _current != '\0' && _current != '\n')
             get_next();
 
-        return { TokenType::WHITESPACE, "", _currentLineNumber };
+        return { TokenType::WHITESPACE, "", _currentLineNumber, _currentColumnNumber };
     }
     // NUMBERS
     else if (isdigit(_current) || (_current == '.' && isdigit(peek_next())))
@@ -84,9 +89,9 @@ Token Lexer::get_next_token()
             throw std::runtime_error("Number may not end with a period on line: " + std::to_string(_currentLineNumber));
 
         if (hasDecimalPoint)
-            return { TokenType::DOUBLE, value, _currentLineNumber };
+            return { TokenType::DOUBLE, value, _currentLineNumber, _currentColumnNumber };
         else
-            return { TokenType::INTEGER, value, _currentLineNumber };
+            return { TokenType::INTEGER, value, _currentLineNumber, _currentColumnNumber };
     }
     // WORDS
     else if (isalpha(_current) || _current == '_')
@@ -99,25 +104,25 @@ Token Lexer::get_next_token()
         }
 
         if (value == "true" || value == "false")
-            return { TokenType::BOOLEAN, value, _currentLineNumber };
+            return { TokenType::BOOLEAN, value, _currentLineNumber, _currentColumnNumber };
         else if (value == "if")
-            return { TokenType::IF, value, _currentLineNumber };
+            return { TokenType::IF, value, _currentLineNumber, _currentColumnNumber };
         else if (value == "else")
-            return { TokenType::ELSE, value, _currentLineNumber };
+            return { TokenType::ELSE, value, _currentLineNumber, _currentColumnNumber };
         else if (value == "while")
-            return { TokenType::WHILE, value, _currentLineNumber };
+            return { TokenType::WHILE, value, _currentLineNumber, _currentColumnNumber };
         else if (value == "FOR")
-            return { TokenType::FOR, value, _currentLineNumber };
+            return { TokenType::FOR, value, _currentLineNumber, _currentColumnNumber };
         else if (value == "and")
-            return { TokenType::AND_CONDITION, "", _currentLineNumber };
+            return { TokenType::AND_CONDITION, "", _currentLineNumber, _currentColumnNumber };
         else if (value == "or")
-            return { TokenType::OR_CONDITION, "", _currentLineNumber };
+            return { TokenType::OR_CONDITION, "", _currentLineNumber, _currentColumnNumber };
         else if (value == "func")
-            return { TokenType::FUNCTION, "", _currentLineNumber };
+            return { TokenType::FUNCTION, "", _currentLineNumber, _currentColumnNumber };
         else if (value == "return")
-            return { TokenType::RETURN, "", _currentLineNumber };
+            return { TokenType::RETURN, "", _currentLineNumber, _currentColumnNumber };
 
-        return { TokenType::WORD, value, _currentLineNumber };
+        return { TokenType::WORD, value, _currentLineNumber, _currentColumnNumber };
     }
     // STRINGS
     else if (_current == '"')
@@ -135,136 +140,136 @@ Token Lexer::get_next_token()
 
         get_next();
 
-        return { TokenType::STRING, value, _currentLineNumber };
+        return { TokenType::STRING, value, _currentLineNumber, _currentColumnNumber };
     }
     // TRUTH CONDITIONS
     else if (_current == '&' && peek_next() == '&')
     {
         get_next();
         get_next();
-        return { TokenType::AND_CONDITION, "", _currentLineNumber };
+        return { TokenType::AND_CONDITION, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '|' && peek_next() == '|')
     {
         get_next();
         get_next();
-        return { TokenType::OR_CONDITION, "", _currentLineNumber };
+        return { TokenType::OR_CONDITION, "", _currentLineNumber, _currentColumnNumber };
     }
     // TRUTH OPERATORS
     else if (_current == '=' && peek_next() == '=')
     {
         get_next();
         get_next();
-        return { TokenType::EQUALS, "", _currentLineNumber };
+        return { TokenType::EQUALS, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '>' && peek_next() == '=')
     {
         get_next();
         get_next();
-        return { TokenType::GREATER_THAN_EQUALS, "", _currentLineNumber };
+        return { TokenType::GREATER_THAN_EQUALS, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '<' && peek_next() == '=')
     {
         get_next();
         get_next();
-        return { TokenType::LESS_THAN_EQUALS, "", _currentLineNumber };
+        return { TokenType::LESS_THAN_EQUALS, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '!' && peek_next() == '=')
     {
         get_next();
         get_next();
-        return { TokenType::NOT_EQUALS, "", _currentLineNumber };
+        return { TokenType::NOT_EQUALS, "", _currentLineNumber, _currentColumnNumber };
     }
     // OPERATORS
     else if (_current == '+' && peek_next() == '+')
     {
         get_next();
         get_next();
-        return { TokenType::INCREMENT, "", _currentLineNumber };
+        return { TokenType::INCREMENT, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '-' && peek_next() == '-')
     {
         get_next();
         get_next();
-        return { TokenType::DECREMENT, "", _currentLineNumber };
+        return { TokenType::DECREMENT, "", _currentLineNumber, _currentColumnNumber };
     }
     // OPERATORS 2
     else if (_current == '^')
     {
         get_next();
-        return { TokenType::POWER, "", _currentLineNumber };
+        return { TokenType::POWER, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '%')
     {
         get_next();
-        return { TokenType::MODULUS, "", _currentLineNumber };
+        return { TokenType::MODULUS, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '>')
     {
         get_next();
-        return { TokenType::GREATER_THAN, "", _currentLineNumber };
+        return { TokenType::GREATER_THAN, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '<')
     {
         get_next();
-        return { TokenType::LESS_THAN, "", _currentLineNumber };
+        return { TokenType::LESS_THAN, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '+')
     {
         get_next();
-        return { TokenType::ADD, "", _currentLineNumber };
+        return { TokenType::ADD, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '-')
     {
         get_next();
-        return { TokenType::SUB, "", _currentLineNumber };
+        return { TokenType::SUB, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '*')
     {
         get_next();
-        return { TokenType::MUL, "", _currentLineNumber };
+        return { TokenType::MUL, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '/' && peek_next() == '/')
     {
         get_next();
         get_next();
-        return { TokenType::COMMENT, "", _currentLineNumber };
+        return { TokenType::COMMENT, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '/')
     {
         get_next();
-        return { TokenType::DIV, "", _currentLineNumber };
+        return { TokenType::DIV, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '=')
     {
         get_next();
-        return { TokenType::ASSIGNMENT, "", _currentLineNumber };
+        return { TokenType::ASSIGNMENT, "", _currentLineNumber, _currentColumnNumber };
     }
     // BODY
     else if (_current == '{')
     {
         get_next();
-        return { TokenType::OPEN_BRACKET, "", _currentLineNumber };
+        return { TokenType::OPEN_BRACKET, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '}')
     {
         get_next();
-        return { TokenType::CLOSED_BRACKET, "", _currentLineNumber };
+        return { TokenType::CLOSED_BRACKET, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == '(')
     {
         get_next();
-        return { TokenType::OPEN_PARAN, "", _currentLineNumber };
+        return { TokenType::OPEN_PARAN, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == ')')
     {
         get_next();
-        return { TokenType::CLOSE_PARAN, "", _currentLineNumber };
+        return { TokenType::CLOSE_PARAN, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == ',')
     {
         get_next();
-        return { TokenType::COMMA, "", _currentLineNumber };
+        return { TokenType::COMMA, "", _currentLineNumber, _currentColumnNumber };
     }
     else
     {
@@ -272,7 +277,7 @@ Token Lexer::get_next_token()
         get_next();
     }
 
-    return { TokenType::ERR, value, _currentLineNumber };
+    return { TokenType::ERR, value, _currentLineNumber, _currentColumnNumber };
 }
 
 std::vector<Token> Lexer::get_tokens()

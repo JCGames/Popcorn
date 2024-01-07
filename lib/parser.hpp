@@ -18,7 +18,7 @@ namespace prs
         int _index;
         lex::Token _currentToken;
 
-        void parse_error(std::string message);
+        void error(std::string message);
 
         void move_next();
         lex::Token peek_next();

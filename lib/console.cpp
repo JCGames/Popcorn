@@ -1,5 +1,7 @@
 #include "console.hpp"
 
+#ifdef _WIN32
+
 WORD Console::consoleDefault = 0;
 
 void Console::init()
@@ -22,3 +24,5 @@ void Console::set_console_to_default()
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, consoleDefault);
 }
+
+#endif

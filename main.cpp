@@ -21,7 +21,9 @@ int main(int argc, char** args)
 
     if (argc > 1)
     {
-        Console::init();
+        #ifdef _WIN32
+            Console::init();
+        #endif
 
         /**
          * Lexing ...
