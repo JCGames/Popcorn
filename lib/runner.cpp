@@ -115,6 +115,74 @@ Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
             Diagnostics::log_error(funcCall->functionName + " only takes one argument. Or none.");
         }
     }
+    else if (funcCall->functionName == "print")
+    {
+        if (funcCall->parameterList.size() == 1)
+        {
+            printf("%s", interpret(funcCall->parameterList[0], scope).cast_to_string().get_str().c_str());
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
+        }
+    }
+    else if (funcCall->functionName == "input")
+    {
+        if (funcCall->parameterList.size() == 0)
+        {
+            std::string line;
+            getline(std::cin, line);
+            return Object(DataType::STRING, new std::string(line));
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes no arguments.");
+        }
+    }
+    else if (funcCall->functionName == "int")
+    {
+        if (funcCall->parameterList.size() == 1)
+        {
+            return interpret(funcCall->parameterList[0]->root, scope).cast_to_int();
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
+        }
+    }
+    else if (funcCall->functionName == "double")
+    {
+        if (funcCall->parameterList.size() == 1)
+        {
+            return interpret(funcCall->parameterList[0]->root, scope).cast_to_double();
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
+        }
+    }
+    else if (funcCall->functionName == "bool")
+    {
+        if (funcCall->parameterList.size() == 1)
+        {
+            return interpret(funcCall->parameterList[0]->root, scope).cast_to_bool();
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
+        }
+    }
+    else if (funcCall->functionName == "string")
+    {
+        if (funcCall->parameterList.size() == 1)
+        {
+            return interpret(funcCall->parameterList[0]->root, scope).cast_to_string();
+        }
+        else
+        {
+            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
+        }
+    }
     else if (ast::Function* func = scope.get_func(funcCall->functionName))
     {
         Scope functionScope(&scope);
@@ -291,7 +359,7 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
         case ast::StatementType::FUNCTION_CALL:
             if (auto x = static_cast<ast::FunctionCall*>(stmt))
             {
-                call_function(x, scope);
+                return call_function(x, scope);
             }
             break;
         case ast::StatementType::WHILE:

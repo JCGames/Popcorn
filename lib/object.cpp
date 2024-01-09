@@ -192,7 +192,7 @@ Object Object::cast_to_int()
                 try {
                     value = std::stoi(get_str());
                 } catch (const std::exception& e) {
-                    throw std::runtime_error(e.what());
+                    Diagnostics::log_error("Could not cast string to integer.");
                 }
 
                 return Object(DataType::INTEGER, new int(value));
@@ -221,7 +221,7 @@ Object Object::cast_to_double()
                 try {
                     value = std::stof(get_str());
                 } catch (const std::exception& e) {
-                    throw std::runtime_error(e.what());
+                    Diagnostics::log_error("Could not cast string to double.");
                 }
 
                 return Object(DataType::DOUBLE, new double(value));

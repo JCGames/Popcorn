@@ -1,0 +1,3 @@
+x = double("-1.5")
+
+printl("Your value is: " + x)

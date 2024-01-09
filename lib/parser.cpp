@@ -276,7 +276,7 @@ Statement* Parser::parse_factor()
         try {
             value = std::stod(_currentToken.value);
         } catch (std::exception& e) {
-            throw std::runtime_error(e.what());
+            Diagnostics::log_error("Could not cast string to double.");
         }   
 
         result = new Double(value, _currentToken.lineNumber);
@@ -289,7 +289,7 @@ Statement* Parser::parse_factor()
         try {
             value = std::stoi(_currentToken.value);
         } catch (std::exception& e) {
-            throw std::runtime_error(e.what());
+            Diagnostics::log_error("Could not cast string to integer.");
         }   
 
         result = new Integer(value, _currentToken.lineNumber);
