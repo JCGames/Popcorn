@@ -11,41 +11,48 @@
 
 namespace run 
 {
-    struct _Function
+    struct FunctionPointer
     {
-        std::string name;
-        ast::Function& funcRef;
+        std::string functionName;
+        ast::Function* function;
+
+        FunctionPointer(std::string functionName, ast::Function* function);
     };
 
-    struct _Variable
+    struct VariablePointer
     {
-        std::string name;
+        std::string variableName;
         obj::Object object;
 
-        _Variable(std::string name, obj::Object object)
-        {
-            this->name = name;
-            this->object = object;
-        }
+        VariablePointer(std::string variableName, obj::Object object);
+    };
+
+    struct Scope
+    {
+        Scope* parent;
+        std::vector<FunctionPointer> functions;
+        std::vector<VariablePointer> pointers;
+
+        Scope();
+        Scope(Scope* parent);
+
+        void add_var(std::string name, obj::Object object);
+        bool has_var(std::string name);
+        obj::Object& get_var(std::string name);
     };
 
     class Runner
     {
-        std::vector<_Function> _functionTable;
-        std::vector<_Variable> _variables;
+        Scope _rootScope;
+        std::vector<FunctionPointer> _functionTable;
 
-        void add_variable(_Variable variable, int initialIndex = 0);
-        _Variable& get_variable(std::string name);
-        bool has_variable(std::string name);
-
-        obj::Object call_function(ast::FunctionCall* funcCall);
-        obj::Object interpret(ast::Statement* stat);
-        void create_function_table(ast::Statement* stat);
+        void create_function_lookup_table(ast::Block* block, Scope& scope);
+        obj::Object call_function(ast::FunctionCall* funcCall, Scope& scope);
+        obj::Object interpret(ast::Statement* stat, Scope& scope);
 
         public:
             Runner();
             
-            void dump_runner();
             void run(ast::AST& ast);
     };
 }

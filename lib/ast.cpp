@@ -2,7 +2,7 @@
 
 using namespace ast;
 
-static std::string ast::get_statement_type_name(StatementType type)
+std::string ast::get_statement_type_name(StatementType type)
 {
     switch (type)
     {

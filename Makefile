@@ -2,9 +2,9 @@ CC = g++
 CFLAGS = -g -Wall
 
 ifeq ($(origin OS), undefined)
-	CLEAN = rm -rf main *.o	
+	CLEAN = rm -rf popcorn *.o	
 else
-	CLEAN = del *.o
+	CLEAN = del *.o *.exe
 endif
 
 # ifeq ($(PLATFORM), Linux)
@@ -13,7 +13,7 @@ endif
 # 	CLEAN = del *.o
 # endif
 
-main: main.o lexer.o parser.o runner.o object.o ast.o console.o
+main: main.o lexer.o parser.o runner.o object.o ast.o console.o diagnostics.o
 	$(CC) $(CFLAGS) $^ -o popcorn
 
 main.o: main.cpp
@@ -32,6 +32,9 @@ object.o: lib/object.cpp lib/object.hpp
 	$(CC) -c $<
 
 ast.o: lib/ast.cpp lib/ast.hpp
+	$(CC) -c $<
+
+diagnostics.o: lib/diagnostics.cpp lib/diagnostics.hpp
 	$(CC) -c $<
 
 console.o: lib/console.cpp lib/console.hpp

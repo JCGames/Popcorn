@@ -44,7 +44,7 @@ namespace ast
         POWER_OPERATOR,
     };
 
-    static std::string get_statement_type_name(StatementType type);
+    std::string get_statement_type_name(StatementType type);
 
     class Statement
     {

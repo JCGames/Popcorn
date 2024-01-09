@@ -1,35 +1,18 @@
 #include "object.hpp"
+#include "diagnostics.hpp"
 
 using namespace obj;
 
 Object::Object()
 {
-    type = ObjectType::_NULL;
-    value = NULL;
+    type = DataType::_NULL;
+    value = nullptr;
 }
 
-Object::Object(std::string strValue)
+Object::Object(DataType type, void* value)
 {
-    this->type = ObjectType::STRING;
-    this->value = new std::string(strValue);
-}
-
-Object::Object(bool boolValue)
-{
-    this->type = ObjectType::BOOLEAN;
-    this->value = new bool(boolValue);
-}
-
-Object::Object(int intValue)
-{
-    this->type = ObjectType::INTEGER;
-    this->value = new int(intValue);
-}
-
-Object::Object(double doubleValue)
-{
-    this->type = ObjectType::DOUBLE;
-    this->value = new double(doubleValue);
+    this->type = type;
+    this->value = value;
 }
 
 Object::Object(const Object& other)
@@ -38,16 +21,16 @@ Object::Object(const Object& other)
 
     switch (type)
     {
-        case ObjectType::BOOLEAN:
+        case DataType::BOOLEAN:
             value = new bool(*static_cast<bool*>(other.value));
             break;
-        case ObjectType::INTEGER:
+        case DataType::INTEGER:
             value = new int(*static_cast<int*>(other.value));
             break;
-        case ObjectType::DOUBLE:
+        case DataType::DOUBLE:
             value = new double(*static_cast<double*>(other.value));
             break;
-        case ObjectType::STRING:
+        case DataType::STRING:
             value = new std::string(*static_cast<std::string*>(other.value));
             break;
     }
@@ -65,16 +48,16 @@ Object& Object::operator=(const Object& other)
 
             switch (type)
             {
-                case ObjectType::BOOLEAN:
+                case DataType::BOOLEAN:
                     value = new bool(*static_cast<bool*>(other.value));
                     break;
-                case ObjectType::INTEGER:
+                case DataType::INTEGER:
                     value = new int(*static_cast<int*>(other.value));
                     break;
-                case ObjectType::DOUBLE:
+                case DataType::DOUBLE:
                     value = new double(*static_cast<double*>(other.value));
                     break;
-                case ObjectType::STRING:
+                case DataType::STRING:
                     value = new std::string(*static_cast<std::string*>(other.value));
                     break;
             }
@@ -95,16 +78,16 @@ void Object::deleteValue(Object& obj)
     {
         switch (obj.type)
         {
-            case ObjectType::BOOLEAN:
+            case DataType::BOOLEAN:
                 delete static_cast<bool*>(obj.value);
                 break;
-            case ObjectType::INTEGER:
+            case DataType::INTEGER:
                 delete static_cast<int*>(obj.value);
                 break;
-            case ObjectType::DOUBLE:
+            case DataType::DOUBLE:
                 delete static_cast<double*>(obj.value);
                 break;
-            case ObjectType::STRING:
+            case DataType::STRING:
                 delete static_cast<std::string*>(obj.value);
                 break;
         }
@@ -122,7 +105,7 @@ void* Object::get_value() const
 
 bool Object::get_bool()
 {
-    if (type == ObjectType::BOOLEAN)
+    if (type == DataType::BOOLEAN)
         return *(bool*)value;
     else
         throw std::runtime_error("Object is not a boolean!");
@@ -130,7 +113,7 @@ bool Object::get_bool()
 
 int Object::get_int()
 {
-    if (type == ObjectType::INTEGER)
+    if (type == DataType::INTEGER)
         return *(int*)value;
     else
         throw std::runtime_error("Object is not a integer!");
@@ -138,7 +121,7 @@ int Object::get_int()
 
 double Object::get_double()
 {
-    if (type == ObjectType::DOUBLE)
+    if (type == DataType::DOUBLE)
         return *(double*)value;
     else
         throw std::runtime_error("Object is not a double!");
@@ -146,7 +129,7 @@ double Object::get_double()
 
 std::string Object::get_str()
 {
-    if (type == ObjectType::STRING)
+    if (type == DataType::STRING)
         return *(std::string*)value;
     else
         throw std::runtime_error("Object is not a string!");
@@ -160,15 +143,15 @@ Object Object::cast_to_bool()
 {
     switch (type)
     {
-        case ObjectType::STRING:
+        case DataType::STRING:
 
             if (get_str() == "true" || get_str() == "True")
             {
-                return Object(true);
+                return Object(DataType::BOOLEAN, new bool(true));
             }
             else if (get_str() == "false" || get_str() == "False")
             {
-                return Object(false);
+                return Object(DataType::BOOLEAN, new bool(false));
             }
 
             int value;
@@ -179,29 +162,30 @@ Object Object::cast_to_bool()
                 throw std::runtime_error("Could not cast string to boolean!");
             }
 
-            return Object(value >= 1);
-        case ObjectType::BOOLEAN:
-            return Object(get_bool());
-        case ObjectType::INTEGER:
-            return Object((bool)get_int());
-        case ObjectType::DOUBLE:
-            return Object((bool)get_double());
+            return Object(DataType::BOOLEAN, new bool(value >= 1));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool()));
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not cast to bool!");
+    throw std::runtime_error("Could not cast to bool!");
 }
 
 Object Object::cast_to_int()
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-            return Object((int)get_bool());
-        case ObjectType::INTEGER:
-            return Object(get_int());
-        case ObjectType::DOUBLE:
-            return Object((int)get_double());
-        case ObjectType::STRING:
+        case DataType::BOOLEAN:
+            return Object(DataType::INTEGER, new int(get_bool()));
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::INTEGER, new int(get_double()));
+        case DataType::STRING:
             {
                 int value;
 
@@ -211,25 +195,26 @@ Object Object::cast_to_int()
                     throw std::runtime_error(e.what());
                 }
 
-                return Object(value);
+                return Object(DataType::INTEGER, new int(value));
             }   
             break;
     }
 
-    return Object();
+    Diagnostics::log_error("Could not cast to int!");
+    throw std::runtime_error("Could not cast to int!");
 }
 
 Object Object::cast_to_double()
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-            return Object((double)get_bool());
-        case ObjectType::INTEGER:
-            return Object((double)get_int());
-        case ObjectType::DOUBLE:
-            return Object(get_double());
-        case ObjectType::STRING:
+        case DataType::BOOLEAN:
+            return Object(DataType::DOUBLE, new double(get_bool()));
+        case DataType::INTEGER:
+            return Object(DataType::DOUBLE, new double(get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new double(get_double()));
+        case DataType::STRING:
             {
                 double value;
 
@@ -239,32 +224,36 @@ Object Object::cast_to_double()
                     throw std::runtime_error(e.what());
                 }
 
-                return Object(value);
+                return Object(DataType::DOUBLE, new double(value));
             }   
             break;
     }
 
-    return Object();
+    Diagnostics::log_error("Could not cast to double!");
+    throw std::runtime_error("Could not cast to double!");
 }
 
 Object Object::cast_to_string()
 {
     switch (type)
     {
-        case ObjectType::STRING:
-            return Object(get_str());
-        case ObjectType::BOOLEAN:
-            return Object((std::string)(get_bool() ? "True" : "False"));
-        case ObjectType::INTEGER:
-            return Object(std::to_string(get_int()));
-        case ObjectType::DOUBLE:
-            return Object(std::to_string(get_double()));
+        case DataType::STRING:
+            return Object(DataType::STRING, new std::string(get_str()));
+        case DataType::BOOLEAN:
+            return Object(DataType::STRING, new std::string(get_bool() ? "True" : "False"));
+        case DataType::INTEGER:
+            return Object(DataType::STRING, new std::string(std::to_string(get_int())));
+        case DataType::DOUBLE:
+            return Object(DataType::STRING, new std::string(std::to_string(get_double())));
+        case DataType::_NULL:
+            return Object(DataType::STRING, new std::string("NULL"));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not cast to string!");
+    throw std::runtime_error("Could not cast to string!");
 }
 
-ObjectType Object::get_type()
+DataType Object::get_type()
 {
     return type;
 }
@@ -277,796 +266,265 @@ Object Object::add_to(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() + obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() + obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() + obj.get_double());
-                case ObjectType::STRING:
-                    return Object(cast_to_string().get_str() + obj.get_str());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() + obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() + obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() + obj.get_double());
-                case ObjectType::STRING:
-                    return Object(cast_to_string().get_str() + obj.get_str());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() + obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() + obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() + obj.get_double());
-                case ObjectType::STRING:
-                    return Object(cast_to_string().get_str() + obj.get_str());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_str() + obj.cast_to_string().get_str());
-                case ObjectType::INTEGER:
-                    return Object(get_str() + obj.cast_to_string().get_str());
-                case ObjectType::DOUBLE:
-                    return Object(get_str() + obj.cast_to_string().get_str());
-                case ObjectType::STRING:
-                    return Object(get_str() + obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int() + obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new double(get_double() + obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() + obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::STRING, new std::string(get_str() + obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not add.");
+    throw std::runtime_error("Could not add.");
 }
 
 Object Object::modulus_by(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() % obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() % obj.get_int());
-                case ObjectType::DOUBLE:
-                    throw std::runtime_error("Cannot modulus by a double!");
-                case ObjectType::STRING:
-                    throw std::runtime_error("Cannot modulus by a string!");
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() % obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() % obj.get_int());
-                case ObjectType::DOUBLE:
-                    throw std::runtime_error("Cannot modulus by a double!");
-                case ObjectType::STRING:
-                    throw std::runtime_error("Cannot modulus by a string!");
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            throw std::runtime_error("Double cannot be moduloed!");
-
-            break;
-        case ObjectType::STRING:
-
-            throw std::runtime_error("String cannot be moduloed!");
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int() % obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            Diagnostics::log_error("Cannot do modulus on a double.");
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() % obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot do modulus on a string.");
     }
 
-    return Object();
+    Diagnostics::log_error("Could not do modulus.");
+    throw std::runtime_error("Could not do modulus.");
 }
 
 Object Object::subtract_from(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() - obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() - obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() - obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be subtracted by a string!");
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() - obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() - obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() - obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be subtracted by a string!");
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() - obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() - obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() - obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Double cannot be subtracted by a string!");
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            throw std::runtime_error("Cannot subtract from a string");
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int() - obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new int(get_double() - obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() - obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot do subtraction on a string.");
     }
 
-    return Object();
+    Diagnostics::log_error("Could not subtract.");
+    throw std::runtime_error("Could not subtract.");
 }
 
 Object Object::multiplied_by(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() * obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() * obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() * obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be multiplied by a string!");
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() * obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() * obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() * obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be multiplied by a string!");
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() * obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() * obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() * obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Double cannot be multiplied by a string!");
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            throw std::runtime_error("Cannot multiply by a string");
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int() * obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new int(get_double() * obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() * obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot do multiplication on a string.");
     }
 
-    return Object();
+    Diagnostics::log_error("Could not multiply.");
+    throw std::runtime_error("Could not multiply.");
 }
 
 Object Object::divided_by(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() / obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() / obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() / obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be divided by a string!");
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() / obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() / obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() / obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Boolean cannot be divided by a string!");
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() / obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() / obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() / obj.get_double());
-                case ObjectType::STRING:
-                    throw std::runtime_error("Double cannot be divided by a string!");
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            throw std::runtime_error("Cannot divided by a string");
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(get_int() / obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new int(get_double() / obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() / obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot do division on a string.");
     }
 
-    return Object();
+    Diagnostics::log_error("Could not divide.");
+    throw std::runtime_error("Could not divide.");
 }
 
 Object Object::negate()
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-            return Object(!get_bool());
-        case ObjectType::INTEGER:
-            return Object(-1 * get_int());
-        case ObjectType::DOUBLE:
-            return Object(-1 * get_double());
-        case ObjectType::STRING:
-            throw std::runtime_error("Cannot negate a string!");
+        case DataType::INTEGER:
+            return Object(DataType::INTEGER, new int(-1 * get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::DOUBLE, new int(-1 * get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(!get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot negate a string.");
     }
 
-    return Object();
+    Diagnostics::log_error("Could not negate.");
+    throw std::runtime_error("Could not negate.");
 }
 
 Object Object::equals(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() == obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() == obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() == obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() == obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() == obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() == obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() == obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() == obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() == obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() == obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() == obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() == obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() == obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() == obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() == obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() == obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() == obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() == obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() == obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() == obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not equate.");
+    throw std::runtime_error("Could not equate.");
 }
 
-Object Object::not_equals(Object obj)
+Object Object::not_equal_to(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() != obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() != obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() != obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() != obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() != obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() != obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() != obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() != obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() != obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() != obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() != obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() != obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() != obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() != obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() != obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() != obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() != obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() != obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() != obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() != obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not un-equate.");
+    throw std::runtime_error("Could not un-equate.");
 }
 
 Object Object::greater_than(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() > obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() > obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() > obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() > obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() > obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() > obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() > obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() > obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() > obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() > obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() > obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() > obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() > obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() > obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() > obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() > obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() > obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() > obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() > obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() > obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not apply greater than.");
+    throw std::runtime_error("Could not apply greater than.");
 }
 
 Object Object::less_than(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() < obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() < obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() < obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() < obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() < obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() < obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() < obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() < obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() < obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() < obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() < obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() < obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() < obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() < obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() < obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() < obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() < obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() < obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() < obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() < obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not apply less than.");
+    throw std::runtime_error("Could not apply less than.");
 }
 
-Object Object::greater_than_equals(Object obj)
+Object Object::greater_than_or_equal_to(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() >= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() >= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() >= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() >= obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() >= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() >= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() >= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() >= obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() >= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() >= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() >= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() >= obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() >= obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() >= obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() >= obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() >= obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() >= obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() >= obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() >= obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() >= obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not apply greater than or equal to.");
+    throw std::runtime_error("Could not apply greater than or equal to.");
 }
 
-Object Object::less_than_equals(Object obj)
+Object Object::less_than_or_equal_to(Object obj)
 {
     switch (type)
     {
-        case ObjectType::BOOLEAN:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_bool() <= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_bool() <= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_bool() <= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_bool() <= obj.cast_to_bool().get_bool());
-            }
-
-            break;
-        case ObjectType::INTEGER:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_int() <= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_int() <= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_int() <= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_int() <= obj.cast_to_int().get_int());
-            }
-
-            break;
-        case ObjectType::DOUBLE:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    return Object(get_double() <= obj.get_bool());
-                case ObjectType::INTEGER:
-                    return Object(get_double() <= obj.get_int());
-                case ObjectType::DOUBLE:
-                    return Object(get_double() <= obj.get_double());
-                case ObjectType::STRING:
-                    return Object(get_double() <= obj.cast_to_double().get_double());
-            }
-
-            break;
-        case ObjectType::STRING:
-
-            switch (obj.type)
-            {
-                case ObjectType::BOOLEAN:
-                    try {
-                        return Object(cast_to_bool().get_bool() <= obj.get_bool());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a boolean value!");
-                    }
-                case ObjectType::INTEGER:
-                    try {
-                        return Object(cast_to_int().get_int() <= obj.get_int());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to an integer value!");
-                    }
-                case ObjectType::DOUBLE:
-                    try {
-                        return Object(cast_to_double().get_double() <= obj.get_double());
-                    } catch (const std::exception& e) {
-                        throw std::runtime_error("Cannot cast the string \"" + get_str() + "\" to a double value!");
-                    }
-                case ObjectType::STRING:
-                    return Object(get_str() <= obj.get_str());
-            }
-
-            break;
+        case DataType::INTEGER:
+            return Object(DataType::BOOLEAN, new bool(get_int() <= obj.cast_to_int().get_int()));
+        case DataType::DOUBLE:
+            return Object(DataType::BOOLEAN, new bool(get_double() <= obj.cast_to_double().get_double()));
+        case DataType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(get_bool() <= obj.cast_to_bool().get_bool()));
+        case DataType::STRING:
+            return Object(DataType::BOOLEAN, new bool(get_str() <= obj.cast_to_string().get_str()));
     }
 
-    return Object();
+    Diagnostics::log_error("Could not apply less than or equal to.");
+    throw std::runtime_error("Could not apply less than or equal to.");
+}
+
+Object Object::power(Object obj)
+{
+    if (obj.type != DataType::INTEGER)
+        Diagnostics::log_error("Only integer exponents are supported.");
+
+    int exponent = obj.get_int();
+    bool wasNegative = false;
+
+    if (exponent < 0)
+    {
+        exponent *= -1;
+        wasNegative = true;
+    }
+
+    switch (type)
+    {
+        case DataType::INTEGER:
+            {
+                if (get_int() == 0)
+                    return Object(DataType::INTEGER, new int(0));
+
+                int result = 1;
+
+                for (int i = 0; i < exponent; ++i)
+                    result = result * get_int();
+
+                return Object(DataType::INTEGER, new int((wasNegative && result != 0) ? 1 / result : result));
+            }
+        case DataType::DOUBLE:
+            {
+                if (get_double() == 0)
+                    return Object(DataType::INTEGER, new double(0));
+
+                double result = 1;
+
+                for (int i = 0; i < exponent; ++i)
+                    result = result * get_double();
+
+                return Object(DataType::DOUBLE, new double((wasNegative && result != 0) ? 1 / result : result));
+            }
+        case DataType::BOOLEAN:
+            Diagnostics::log_warning("Should not do powers on a boolean.");
+            return Object(DataType::BOOLEAN, new bool(get_bool()));
+        case DataType::STRING:
+            Diagnostics::log_error("Cannot do powers on a string.");
+    }
+
+    Diagnostics::log_error("Could not do power.");
+    throw std::runtime_error("Could not do power.");
 }

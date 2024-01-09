@@ -15,7 +15,7 @@
 
 namespace obj 
 {
-    enum class ObjectType
+    enum class DataType
     {
         BOOLEAN,
         INTEGER,
@@ -26,17 +26,14 @@ namespace obj
 
     class Object
     {
-        ObjectType type;
+        DataType type;
         void* value;
 
         void deleteValue(Object& obj);
         
         public:
             Object();
-            Object(std::string strValue);
-            Object(bool boolValue);
-            Object(int intValue);
-            Object(double doubleValue);
+            Object(DataType type, void* value);
             Object(const Object& other);
             Object& operator=(const Object& other);
             ~Object();
@@ -59,7 +56,7 @@ namespace obj
             Object cast_to_int();
             Object cast_to_double();
             Object cast_to_string();
-            ObjectType get_type();
+            DataType get_type();
 
             /**
              * Operations
@@ -72,11 +69,12 @@ namespace obj
             Object divided_by(Object obj);
             Object negate();
             Object equals(Object obj);
-            Object not_equals(Object obj);
+            Object not_equal_to(Object obj);
             Object greater_than(Object obj);
             Object less_than(Object obj);
-            Object greater_than_equals(Object obj);
-            Object less_than_equals(Object obj);
+            Object greater_than_or_equal_to(Object obj);
+            Object less_than_or_equal_to(Object obj);
+            Object power(Object obj);
     };
 }
 

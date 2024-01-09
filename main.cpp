@@ -67,7 +67,7 @@ int main(int argc, char** args)
 
         if (DEBUG)
         {
-            runner.dump_runner();
+            
         }
 
         if (ast != NULL)

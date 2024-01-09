@@ -19,7 +19,7 @@ namespace prs
         lex::Token _currentToken;
         bool _isInChildBlock;
 
-        void error(std::string message);
+        
 
         void move_next();
         lex::Token peek_next();

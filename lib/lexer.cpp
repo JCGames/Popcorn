@@ -1,17 +1,21 @@
 #include <stdexcept>
 #include "lexer.hpp"
+#include "diagnostics.hpp"
 
 using namespace lex;
 
 Lexer::Lexer(const std::string& fileName)
 {
+    Diagnostics::info = DiagnosticInfo(DiagnosticState::_LEXER);
+
     _ifs = new std::ifstream(fileName);
 
     if (!_ifs->is_open())
-        throw std::runtime_error("Could not open the requested file!");
+        Diagnostics::log_error("Could not open " + fileName);
 
     get_next(); // sets _current
     _currentLineNumber = 1;
+    Diagnostics::info.lineNumber = 1;
     _currentColumnNumber = 0;
 }
 
@@ -25,6 +29,7 @@ void Lexer::get_next()
 {
     _current = _ifs->get();
     ++_currentColumnNumber;
+    Diagnostics::info.columnNumber = _currentColumnNumber;
 }
 
 char Lexer::peek_next()
@@ -39,6 +44,8 @@ bool Lexer::is_end_of_file()
 
 Token Lexer::get_next_token()
 {
+    Diagnostics::info.lineNumber = _currentLineNumber;
+
     std::string value;
 
     // END OF FILE
@@ -80,13 +87,13 @@ Token Lexer::get_next_token()
             if (!hasDecimalPoint && _current == '.')
                 hasDecimalPoint = true;
             else if (_current == '.')
-                throw std::runtime_error("To many decimal points in number on line: " + std::to_string(_currentLineNumber));
+                Diagnostics::log_error("To many decimal points.");
 
             get_next();
         }
 
         if (_current == '.')
-            throw std::runtime_error("Number may not end with a period on line: " + std::to_string(_currentLineNumber));
+            Diagnostics::log_error("Number seems to but should not end with a decimal point.");
 
         if (hasDecimalPoint)
             return { TokenType::DOUBLE, value, _currentLineNumber, _currentColumnNumber };
@@ -136,7 +143,7 @@ Token Lexer::get_next_token()
         }
 
         if (_current != '"')
-            throw std::runtime_error("String did not have a closing quotation mark on line: " + _currentLineNumber);
+            Diagnostics::log_error("String did not have a closing quotation.");
 
         get_next();
 

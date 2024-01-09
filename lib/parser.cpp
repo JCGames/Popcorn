@@ -2,6 +2,7 @@
 #include <string>
 #include "console.hpp"
 #include "parser.hpp"
+#include "diagnostics.hpp"
 
 using namespace prs;
 using namespace ast;
@@ -11,6 +12,8 @@ Parser::Parser()
 {
     _index = -1;
     _currentToken = ERR_TOKEN;
+
+    Diagnostics::info = DiagnosticInfo(DiagnosticState::_PARSER);
 }
 
 Parser::Parser(const std::vector<Token>& tokens)
@@ -21,38 +24,17 @@ Parser::Parser(const std::vector<Token>& tokens)
     _isInChildBlock = false;
 }
 
-void Parser::error(std::string message)
-{
-    printf("\n");
-
-    #ifdef _WIN32
-        Console::set_console_color(12);
-    #elif __linux__
-        printf("\x1B[31m");
-    #endif
-    
-    printf("[LINE: %i, COLUMN: %i] [TOKEN: (%s, \"%s\")]: %s", _currentToken.lineNumber, _currentToken.columnNumber, get_token_type_name(_currentToken.type).c_str(), _currentToken.value.c_str(), message.c_str());
-
-    #ifdef _WIN32
-        Console::set_console_to_default();
-    #elif __linux__
-        printf("\033[0m");
-    #endif
-
-    printf("\n");
-
-    delete _ast;
-    exit(1);
-}
-
 /// @brief Moves to the next token. Next token could be whitespace.
 void Parser::move_next()
 {
     if (_index + 1 >= (int)_tokens.size())
-        error("End of file has been reached!");
+        return;
 
     ++_index;
     _currentToken = _tokens[_index];
+    Diagnostics::info.lineNumber = _currentToken.lineNumber;
+    Diagnostics::info.columnNumber = _currentToken.columnNumber;
+    Diagnostics::info.currentToken = _currentToken;
 }
 
 /// @brief Looks at the next token. Ignores whitespace.
@@ -313,7 +295,8 @@ Statement* Parser::parse_factor()
     // NEGATE
     else if (_currentToken.type == TokenType::SUB)
     {
-        result = new Negate(parse_factor(), _currentToken.lineNumber);
+        move_next_non_wspace();
+        result = new Negate(parse_expression(), _currentToken.lineNumber);
     }
     // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
@@ -323,7 +306,7 @@ Statement* Parser::parse_factor()
     // ERROR
     else
     {
-        error("Not a term."); 
+        Diagnostics::log_error("Not a term.");
     }
 
     move_next_non_wspace();
@@ -346,7 +329,7 @@ If* Parser::parse_if()
         move_next_non_wspace_pass_eols();
 
     if (_currentToken.type != TokenType::OPEN_BRACKET)
-        error("If statement did not have an open bracket.");
+        Diagnostics::log_error("If statement did not have an open bracket.");
 
     _if->body = parse_block();
 
@@ -379,7 +362,7 @@ Else* Parser::parse_else()
         move_next_non_wspace_pass_eols();
 
     if (_currentToken.type != TokenType::OPEN_BRACKET)
-        error("Else statement did not have an open bracket.");
+        Diagnostics::log_error("Else statement did not have an open bracket.");
 
     _else->body = parse_block();
 
@@ -416,7 +399,7 @@ Statement* Parser::parse_next_statement()
         va->expression = parse_expression();
 
         if (!is_end_of_statement())
-            error("Incorrect variable assignment.");
+            Diagnostics::log_error("Incorrect variable assignment.");
         
         return va;
     }
@@ -428,9 +411,57 @@ Statement* Parser::parse_next_statement()
         move_next_non_wspace();
 
         if (!is_end_of_statement())
-            error("Incorrect function call " + fc->functionName + ".");
+            Diagnostics::log_error("Incorrect function call " + fc->functionName + ".");
 
         return fc;
+    }
+    // FUNCITON
+    else if (_currentToken.type == TokenType::FUNCTION)
+    {
+        move_next_non_wspace();
+
+        if (_currentToken.type != TokenType::WORD)
+            Diagnostics::log_error("Function definition is lacking a name.");
+
+        Function* func = new Function(_currentToken.value, nullptr, _currentToken.lineNumber);
+        
+        move_next_non_wspace();
+
+        if (_currentToken.type != TokenType::OPEN_PARAN)
+            Diagnostics::log_error("Function definition is missing an open parenthesis (.");
+
+        move_next_non_wspace();
+
+        if (_currentToken.type != TokenType::CLOSE_PARAN) 
+        {
+            while (_currentToken.type != TokenType::CLOSE_PARAN && _currentToken.type != TokenType::END_OF_FILE)
+            {
+                if (_currentToken.type != TokenType::WORD)
+                    Diagnostics::log_error("Incorrect parameter in function definition.");
+
+                func->parameterNames.push_back(_currentToken.value);
+
+                if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
+                {
+                    move_next_non_wspace();
+                    continue;
+                }
+
+                break;
+            }
+
+            if (_currentToken.type != TokenType::CLOSE_PARAN)
+                Diagnostics::log_error("Function definition missing a closing parenthesis ).");
+        }
+
+        move_next_non_wspace_pass_eols();
+
+        if (_currentToken.type != TokenType::OPEN_BRACKET)
+            Diagnostics::log_error("Function definition missing its body {.");
+
+        func->body = parse_block();
+
+        return func;
     }
     // RETURN
     else if (_currentToken.type == TokenType::RETURN)
@@ -442,7 +473,7 @@ Statement* Parser::parse_next_statement()
         r->expression = parse_expression();
 
         if (!is_end_of_statement())
-            error("Return not formatted properly.");
+            Diagnostics::log_error("Return not formatted properly.");
 
         return r;
     }
@@ -459,7 +490,7 @@ Statement* Parser::parse_next_statement()
             move_next_non_wspace_pass_eols();
 
         if (_currentToken.type != TokenType::OPEN_BRACKET)
-            error("While statement did not have an open bracket.");
+            Diagnostics::log_error("While statement did not have an open bracket.");
 
         w->body = parse_block();
 
@@ -478,7 +509,7 @@ Statement* Parser::parse_next_statement()
         move_next_non_wspace();
 
         if (!is_end_of_statement())
-            error("Variable increment was not properly formatted.");
+            Diagnostics::log_error("Variable increment was not properly formatted.");
 
         return new VariableAssignment(variableName, new Expression(new AddOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
     }
@@ -490,12 +521,12 @@ Statement* Parser::parse_next_statement()
         move_next_non_wspace();
 
         if (!is_end_of_statement())
-            error("Variable decrement was not properly formatted.");
+            Diagnostics::log_error("Variable decrement was not properly formatted.");
 
         return new VariableAssignment(variableName, new Expression(new SubtractOperator(new Variable(variableName, _currentToken.lineNumber), new Integer(1, _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber), _currentToken.lineNumber);
     }
 
-    error("Could not read statement.");
+    Diagnostics::log_error("Could not read statement.");
 
     return nullptr;
 }
@@ -526,10 +557,10 @@ FunctionCall* Parser::parse_function_call()
         }
 
         if (_currentToken.type == TokenType::COMMA)
-            error("Function call should not be ended with a comma.");
+            Diagnostics::log_error("Function call should not be ended with a comma.");
 
         if (_currentToken.type != TokenType::CLOSE_PARAN)
-            error("Missing a closed parenthesis ).");
+            Diagnostics::log_error("Missing a closed parenthesis ).");
     }
 
     return fc;
@@ -557,13 +588,13 @@ Block* Parser::parse_block()
         }
 
         if (_currentToken.type != TokenType::CLOSED_BRACKET)
-            error("Missing a closed bracket }.");
+            Diagnostics::log_error("Missing a closed bracket }.");
 
         _isInChildBlock = false;
     }
     else
     {
-        if (_currentToken.type == TokenType::WHITESPACE)
+        if (_currentToken.type == TokenType::WHITESPACE || is_end_of_statement())
             move_next_non_wspace_pass_eols();
 
         while (_currentToken.type != TokenType::END_OF_FILE)
