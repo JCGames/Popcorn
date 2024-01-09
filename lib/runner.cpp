@@ -26,6 +26,17 @@ Scope::Scope(Scope* parent)
     this->parent = parent;
 }
 
+void Scope::add_func(std::string name, ast::Function* function)
+{
+    for (auto func : functions)
+    {
+        if (name == func.functionName)
+            Diagnostics::log_error("Function " + name + " has already been declared in this scope.");
+    }
+
+    functions.push_back(FunctionPointer(name, function));
+}
+
 ast::Function* Scope::get_func(std::string name)
 {
     for (auto func : functions)
@@ -35,6 +46,9 @@ ast::Function* Scope::get_func(std::string name)
             return func.function;
         }
     }
+
+    if (parent != nullptr)
+        return parent->get_func(name);
 
     return nullptr;
 }
@@ -88,11 +102,13 @@ void Runner::create_function_lookup_table(ast::Block* block, Scope& scope)
 {
     for (auto stmt : block->statements)
     {
+        Diagnostics::info.lineNumber = stmt->get_line_index();
+
         if (stmt->get_type() == ast::StatementType::FUNCTION)
         {
             if (ast::Function* func = static_cast<ast::Function*>(stmt))
             {
-                scope.functions.push_back(FunctionPointer(func->functionName, func));
+                scope.add_func(func->functionName, func);
             }
         }
     }
@@ -195,6 +211,8 @@ Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
             functionScope.add_var(func->parameterNames[i], interpret(funcCall->parameterList[i]->root, scope));
         }
 
+        create_function_lookup_table(func->body, functionScope);
+
         for (const auto& stmt : func->body->statements)
         {
             if (stmt->get_type() == ast::StatementType::RETURN)
@@ -220,6 +238,8 @@ Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
 
 Object Runner::interpret(ast::Statement* stmt, Scope& scope)
 {
+    Diagnostics::info.lineNumber = stmt->get_line_index();
+
     switch (stmt->get_type())
     {
         /**
@@ -379,6 +399,9 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
 
                     for (const auto& s : x->body->statements)
                     {
+                        if (s->get_type() == ast::StatementType::FUNCTION)
+                            Diagnostics::log_error("Functions cannot be declared within while loops.");
+
                         interpret(s, whileScope);
                     }
 
@@ -398,8 +421,13 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
 
                 if (result.get_type() == DataType::BOOLEAN && result.get_bool() == true)
                 {
-                    for (const auto& s : x->body->statements)
+                    for (const auto& s : x->body->statements) 
+                    {
+                        if (s->get_type() == ast::StatementType::FUNCTION)
+                            Diagnostics::log_error("Functions cannot be declared within if statements.");
+
                         interpret(s, ifScope);
+                    }
                 }
                 else if (x->elseOrIf != nullptr)
                 {
@@ -412,8 +440,13 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
             {
                 Scope elseScope(&scope);
 
-                for (const auto& s : x->body->statements)
+                for (const auto& s : x->body->statements) 
+                {
+                    if (s->get_type() == ast::StatementType::FUNCTION)
+                        Diagnostics::log_error("Functions cannot be declared within else statements.");
+
                     interpret(s, elseScope);
+                }
             }
             break;
         case ast::StatementType::FUNCTION:

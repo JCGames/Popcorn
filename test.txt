@@ -1,3 +1,18 @@
-x = double("-1.5")
+main()
 
-printl("Your value is: " + x)
+func sub()
+{
+    printl("sub")
+}
+
+func main()
+{
+    func inner()
+    {
+        printl("inner")
+    }
+
+    printl("Main")
+    sub()
+    inner()
+}
