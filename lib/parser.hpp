@@ -26,6 +26,7 @@ namespace prs
         lex::Token peek_next_non_wspace();
         void move_next_non_wspace();
         void move_next_non_wspace_pass_eols();
+        lex::Token peek_next_non_wspace_pass_eols();
         bool is_end_of_statement();
 
         ast::Expression* parse_expression();

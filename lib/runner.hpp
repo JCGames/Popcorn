@@ -36,6 +36,8 @@ namespace run
         Scope();
         Scope(Scope* parent);
 
+        ast::Function* get_func(std::string name);
+
         void add_var(std::string name, obj::Object object);
         bool has_var(std::string name);
         obj::Object& get_var(std::string name);

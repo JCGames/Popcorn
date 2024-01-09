@@ -70,6 +70,18 @@ Token Parser::peek_next_non_wspace()
     return result;
 }
 
+Token Parser::peek_next_non_wspace_pass_eols()
+{
+    int prevIndex = _index;
+
+    move_next_non_wspace_pass_eols();
+
+    Token result = _currentToken;
+    _index = prevIndex;
+    _currentToken = _tokens[prevIndex];
+    return result;
+}
+
 /// @brief Moves to the first non-whitespace tokens and advances through each line to find it
 void Parser::move_next_non_wspace_pass_eols()
 {
@@ -333,9 +345,9 @@ If* Parser::parse_if()
 
     _if->body = parse_block();
 
-    if (peek_next_non_wspace().type == TokenType::ELSE)
+    if (peek_next_non_wspace_pass_eols().type == TokenType::ELSE)
     {
-        move_next_non_wspace();
+        move_next_non_wspace_pass_eols();
 
         if (peek_next_non_wspace().type == TokenType::IF)
         {
@@ -440,6 +452,8 @@ Statement* Parser::parse_next_statement()
                     Diagnostics::log_error("Incorrect parameter in function definition.");
 
                 func->parameterNames.push_back(_currentToken.value);
+
+                move_next_non_wspace();
 
                 if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
                 {

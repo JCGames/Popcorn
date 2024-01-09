@@ -26,6 +26,19 @@ Scope::Scope(Scope* parent)
     this->parent = parent;
 }
 
+ast::Function* Scope::get_func(std::string name)
+{
+    for (auto func : functions)
+    {
+        if (func.functionName == name)
+        {
+            return func.function;
+        }
+    }
+
+    return nullptr;
+}
+
 void Scope::add_var(std::string name, obj::Object object)
 {
     for (const auto& v : pointers)
@@ -101,6 +114,37 @@ Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
         {
             Diagnostics::log_error(funcCall->functionName + " only takes one argument. Or none.");
         }
+    }
+    else if (ast::Function* func = scope.get_func(funcCall->functionName))
+    {
+        Scope functionScope(&scope);
+
+        if (func->parameterNames.size() != funcCall->parameterList.size())
+            Diagnostics::log_error("Function call " + func->functionName + " did not match the functions parameter list.");
+
+        for (size_t i = 0; i < func->parameterNames.size(); ++i)
+        {
+            functionScope.add_var(func->parameterNames[i], interpret(funcCall->parameterList[i]->root, scope));
+        }
+
+        for (const auto& stmt : func->body->statements)
+        {
+            if (stmt->get_type() == ast::StatementType::RETURN)
+            {
+                if (auto x = static_cast<ast::Return*>(stmt))
+                {
+                    return interpret(x->expression, functionScope);
+                }
+            }
+
+            interpret(stmt, functionScope);
+        }
+
+        return Object();
+    }
+    else
+    {
+        Diagnostics::log_error("Function " + funcCall->functionName + " has not been declared.");
     }
 
     return Object();
@@ -249,6 +293,62 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
             {
                 call_function(x, scope);
             }
+            break;
+        case ast::StatementType::WHILE:
+            if (auto x = static_cast<ast::While*>(stmt))
+            {
+                Object result = interpret(x->condition->root, scope);
+
+                while (true)
+                {
+                    if (result.get_type() != DataType::BOOLEAN)
+                        Diagnostics::log_warning("While loop did not recieve a boolean value.");
+
+                    if (result.get_type() == DataType::BOOLEAN && result.get_bool() != true)
+                        break;
+
+                    Scope whileScope(&scope);
+
+                    for (const auto& s : x->body->statements)
+                    {
+                        interpret(s, whileScope);
+                    }
+
+                    result = interpret(x->condition->root, scope);
+                }
+            }
+            break;
+        case ast::StatementType::IF:
+            if (auto x = static_cast<ast::If*>(stmt))
+            {
+                Object result = interpret(x->condition->root, scope);
+
+                Scope ifScope(&scope);
+
+                if (result.get_type() != DataType::BOOLEAN)
+                    Diagnostics::log_warning("If statement did not recieve a boolean value.");
+
+                if (result.get_type() == DataType::BOOLEAN && result.get_bool() == true)
+                {
+                    for (const auto& s : x->body->statements)
+                        interpret(s, ifScope);
+                }
+                else if (x->elseOrIf != nullptr)
+                {
+                    interpret(x->elseOrIf, scope);
+                }
+            }
+            break;
+        case ast::StatementType::ELSE:
+            if (auto x = static_cast<ast::Else*>(stmt))
+            {
+                Scope elseScope(&scope);
+
+                for (const auto& s : x->body->statements)
+                    interpret(s, elseScope);
+            }
+            break;
+        case ast::StatementType::FUNCTION:
             break;
         
         default:
