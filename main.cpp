@@ -6,10 +6,20 @@
 #include "lib/parser.hpp"
 #include "lib/runner.hpp"
 #include "lib/console.hpp"
+#include "lib/diagnostics.hpp"
 
 using namespace std;
 
 static bool DEBUG = false;
+
+string get_file_ext(const string& s) 
+{
+    size_t i = s.rfind('.', s.length());
+    if (i != string::npos)
+        return(s.substr(i+1, s.length() - i));
+
+    return("");
+}
 
 int main(int argc, char** args)
 {
@@ -25,11 +35,24 @@ int main(int argc, char** args)
             Console::init();
         #endif
 
+        // make sure the file is a .pop file
+        std::string fileName(args[1]);
+        std::string fileExt = get_file_ext(fileName);
+
+        if (fileExt.empty())
+        {
+            fileName += ".pop";
+            fileExt = "pop";
+        }
+
+        if (fileExt != "pop")
+            Diagnostics::log_error("Could not run the file " + std::string(args[1]) + " because it was not a .pop file.");
+
         /**
          * Lexing ...
         */
 
-        lex::Lexer lexer(args[1]);
+        lex::Lexer lexer(fileName);
         std::vector<lex::Token> tokens = lexer.get_tokens();
 
         if (DEBUG)

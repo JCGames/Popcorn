@@ -11,7 +11,7 @@ Lexer::Lexer(const std::string& fileName)
     _ifs = new std::ifstream(fileName);
 
     if (!_ifs->is_open())
-        Diagnostics::log_error("Could not open " + fileName);
+        Diagnostics::log_error("Could not open \"" + fileName + "\". File may not exist.");
 
     get_next(); // sets _current
     _currentLineNumber = 1;

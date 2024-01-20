@@ -2,43 +2,22 @@ CC = g++
 CFLAGS = -g -Wall
 
 ifeq ($(origin OS), undefined)
-	CLEAN = rm -rf popcorn *.o	
+	CLEAN = rm -rf lib/*.o popcorn *.o
 else
-	CLEAN = del *.o *.exe
+	CLEAN = cd lib && del *.o && cd .. && del *.exe *.o
 endif
 
-# ifeq ($(PLATFORM), Linux)
-# 	CLEAN = rm -rf main *.o	
-# else
-# 	CLEAN = del *.o
-# endif
+CPP_FILES := $(wildcard lib/*.cpp)
+OBJ_FILES := $(patsubst %.cpp, %.o, $(CPP_FILES))
 
-main: main.o lexer.o parser.o runner.o object.o ast.o console.o diagnostics.o
+popcorn: main.o $(OBJ_FILES)
 	$(CC) $(CFLAGS) $^ -o popcorn
 
 main.o: main.cpp
-	$(CC) -c $<
+	$(CC) -c $(CFLAGS) $<
 
-lexer.o: lib/lexer.cpp lib/lexer.hpp
-	$(CC) -c $<
-
-parser.o: lib/parser.cpp lib/parser.hpp
-	$(CC) -c $<
-
-runner.o: lib/runner.cpp lib/runner.hpp
-	$(CC) -c $<
-
-object.o: lib/object.cpp lib/object.hpp
-	$(CC) -c $<
-
-ast.o: lib/ast.cpp lib/ast.hpp
-	$(CC) -c $<
-
-diagnostics.o: lib/diagnostics.cpp lib/diagnostics.hpp
-	$(CC) -c $<
-
-console.o: lib/console.cpp lib/console.hpp
-	$(CC) -c $<
+%.o: lib/%.cpp
+	$(CC) -c $(CFLAGS) $< -o $o
 
 clean:
 	$(CLEAN)
