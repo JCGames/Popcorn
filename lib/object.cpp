@@ -3,10 +3,13 @@
 
 using namespace obj;
 
+/**
+ * Creates a null object.
+*/
 Object::Object()
 {
-    type = DataType::_NULL;
-    value = nullptr;
+    this->type = DataType::_NULL;
+    this->value = nullptr;
 }
 
 Object::Object(DataType type, void* value)
@@ -19,29 +22,35 @@ Object::Object(const Object& other)
 {
     this->type = other.type;
 
-    switch (type)
+    if (other.value != nullptr) 
     {
-        case DataType::BOOLEAN:
-            value = new bool(*static_cast<bool*>(other.value));
-            break;
-        case DataType::INTEGER:
-            value = new int(*static_cast<int*>(other.value));
-            break;
-        case DataType::DOUBLE:
-            value = new double(*static_cast<double*>(other.value));
-            break;
-        case DataType::STRING:
-            value = new std::string(*static_cast<std::string*>(other.value));
-            break;
+        switch (type)
+        {
+            case DataType::BOOLEAN:
+                value = new bool(*static_cast<bool*>(other.value));
+                break;
+            case DataType::INTEGER:
+                value = new int(*static_cast<int*>(other.value));
+                break;
+            case DataType::DOUBLE:
+                value = new double(*static_cast<double*>(other.value));
+                break;
+            case DataType::STRING:
+                value = new std::string(*static_cast<std::string*>(other.value));
+                break;
+            case DataType::_NULL:
+                value = nullptr;
+                break;
+        }
     }
 }
 
-Object& Object::operator=(const Object& other) 
+Object& Object::operator=(const Object& other)
 {
-    deleteValue(*this);
-
     if (this != &other)
     {
+        delete_value(*this);
+
         if (other.value != nullptr)
         {
             this->type = other.type;
@@ -69,10 +78,10 @@ Object& Object::operator=(const Object& other)
 
 Object::~Object()
 {
-    deleteValue(*this);
+    delete_value(*this);
 }
 
-void Object::deleteValue(Object& obj)
+void Object::delete_value(Object& obj)
 {
     if (obj.value != nullptr)
     {
@@ -91,6 +100,8 @@ void Object::deleteValue(Object& obj)
                 delete static_cast<std::string*>(obj.value);
                 break;
         }
+
+        obj.value = nullptr;
     }
 }
 

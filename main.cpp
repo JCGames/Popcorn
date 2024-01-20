@@ -39,6 +39,9 @@ int main(int argc, char** args)
                 print_token(token);
         }
 
+        if (DEBUG)
+            printf("\n=============================");
+
         /**
          * Parsing ...
         */
@@ -48,27 +51,25 @@ int main(int argc, char** args)
 
         if (DEBUG)
         {
-            printf("\n========== AST ==========\n");
+            printf("\n============ AST ============\n");
             ast->print();
         }
 
         /**
          * Running ...
         */
+
+        if (DEBUG)
+            printf("\n============================\n");
         
         if (DEBUG)
-            printf("\n========== OUTPUT ==========\n\n");
+            printf("========== OUTPUT ==========\n\n");
 
         run::Runner runner;
         runner.run(*ast);
 
         if (DEBUG)
             printf("\n============================\n\n");
-
-        if (DEBUG)
-        {
-            
-        }
 
         if (ast != NULL)
             delete ast;

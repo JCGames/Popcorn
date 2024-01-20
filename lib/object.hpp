@@ -29,7 +29,7 @@ namespace obj
         DataType type;
         void* value;
 
-        void deleteValue(Object& obj);
+        void delete_value(Object& obj);
         
         public:
             Object();

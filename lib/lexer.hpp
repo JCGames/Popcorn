@@ -47,6 +47,7 @@ namespace lex
         FUNCTION,
         RETURN,
         POWER,
+        BREAK,
     };
 
     static std::string get_token_type_name(TokenType type)
@@ -91,6 +92,7 @@ namespace lex
             case TokenType::FUNCTION: return "FUNCTION";
             case TokenType::RETURN: return "RETURN";
             case TokenType::POWER: return "POWER";
+            case TokenType::BREAK: return "BREAK";
             default: return "NONE";
         }
     }

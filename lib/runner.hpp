@@ -14,9 +14,9 @@ namespace run
     struct FunctionPointer
     {
         std::string functionName;
-        ast::Function* function;
+        ast::Node* function;
 
-        FunctionPointer(std::string functionName, ast::Function* function);
+        FunctionPointer(std::string functionName, ast::Node* function);
     };
 
     struct VariablePointer
@@ -31,13 +31,20 @@ namespace run
     {
         Scope* parent;
         std::vector<FunctionPointer> functions;
-        std::vector<VariablePointer> pointers;
+        std::vector<VariablePointer> variables;
+
+        // primarily for functions
+        bool canNestFunctions;
+        bool returnFlag;
+
+        // primarily for while loops
+        bool breakFlag;
 
         Scope();
         Scope(Scope* parent);
 
-        void add_func(std::string name, ast::Function* function);
-        ast::Function* get_func(std::string name);
+        void add_func(std::string name, ast::Node* function);
+        ast::Node* get_func(std::string name);
 
         void add_var(std::string name, obj::Object object);
         bool has_var(std::string name);
@@ -47,11 +54,11 @@ namespace run
     class Runner
     {
         Scope _rootScope;
-        std::vector<FunctionPointer> _functionTable;
 
-        void create_function_lookup_table(ast::Block* block, Scope& scope);
-        obj::Object call_function(ast::FunctionCall* funcCall, Scope& scope);
-        obj::Object interpret(ast::Statement* stat, Scope& scope);
+        void create_function_lookup_table(ast::Node* block, Scope& scope);
+        obj::Object call_function(ast::Node* funcCall, Scope& scope);
+        obj::Object run_block(ast::Node* block, Scope& scope);
+        obj::Object interpret(ast::Node* stat, Scope& scope);
 
         public:
             Runner();

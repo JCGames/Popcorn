@@ -128,6 +128,8 @@ Token Lexer::get_next_token()
             return { TokenType::FUNCTION, "", _currentLineNumber, _currentColumnNumber };
         else if (value == "return")
             return { TokenType::RETURN, "", _currentLineNumber, _currentColumnNumber };
+        else if (value == "break")
+            return { TokenType::BREAK, "", _currentLineNumber, _currentColumnNumber };
 
         return { TokenType::WORD, value, _currentLineNumber, _currentColumnNumber };
     }

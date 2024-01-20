@@ -4,7 +4,7 @@
 using namespace run;
 using namespace obj;
 
-FunctionPointer::FunctionPointer(std::string functionName, ast::Function* function)
+FunctionPointer::FunctionPointer(std::string functionName, ast::Node* function)
 {
     this->functionName = functionName;
     this->function = function;
@@ -19,14 +19,20 @@ VariablePointer::VariablePointer(std::string variableName, obj::Object object)
 Scope::Scope()
 {
     this->parent = nullptr;
+    this->canNestFunctions = false;
+    this->returnFlag = false;
+    this->breakFlag = false;
 }
 
 Scope::Scope(Scope* parent)
 {
     this->parent = parent;
+    this->canNestFunctions = false;
+    this->returnFlag = false;
+    this->breakFlag = false;
 }
 
-void Scope::add_func(std::string name, ast::Function* function)
+void Scope::add_func(std::string name, ast::Node* function)
 {
     for (auto func : functions)
     {
@@ -37,7 +43,7 @@ void Scope::add_func(std::string name, ast::Function* function)
     functions.push_back(FunctionPointer(name, function));
 }
 
-ast::Function* Scope::get_func(std::string name)
+ast::Node* Scope::get_func(std::string name)
 {
     for (auto func : functions)
     {
@@ -55,18 +61,18 @@ ast::Function* Scope::get_func(std::string name)
 
 void Scope::add_var(std::string name, obj::Object object)
 {
-    for (const auto& v : pointers)
+    for (const auto& v : variables)
     {
         if (v.variableName == name)
             Diagnostics::log_error("Variable " + name + " was already declared.");
     }
 
-    pointers.push_back(VariablePointer(name, object));
+    variables.push_back(VariablePointer(name, object));
 }
 
 bool Scope::has_var(std::string name)
 {
-    for (const auto& v : pointers)
+    for (const auto& v : variables)
     {
         if (v.variableName == name)
             return true;
@@ -80,7 +86,7 @@ bool Scope::has_var(std::string name)
 
 obj::Object& Scope::get_var(std::string name)
 {
-    for (auto& v : pointers)
+    for (auto& v : variables)
     {
         if (v.variableName == name)
             return v.object;
@@ -98,53 +104,46 @@ Runner::Runner()
     Diagnostics::info = DiagnosticInfo(DiagnosticState::_RUNNER);
 }
 
-void Runner::create_function_lookup_table(ast::Block* block, Scope& scope)
+void Runner::create_function_lookup_table(ast::Node* block, Scope& scope)
 {
-    for (auto stmt : block->statements)
+    for (auto stmt : block->get_children())
     {
         Diagnostics::info.lineNumber = stmt->get_line_index();
 
-        if (stmt->get_type() == ast::StatementType::FUNCTION)
+        if (stmt->get_type() == ast::NodeType::FUNCTION)
         {
-            if (ast::Function* func = static_cast<ast::Function*>(stmt))
-            {
-                scope.add_func(func->functionName, func);
-            }
+            scope.add_func((*stmt->get_value<ast::FunctionInfo>()).functionName, stmt);
         }
     }
 }
 
-Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
+Object Runner::call_function(ast::Node* funcCall, Scope& scope)
 {
-    if (funcCall->functionName == "printl")
+    std::string functionName = *funcCall->get_value<std::string>();
+    auto children = funcCall->get_children();
+
+    /**
+     * LANGUAGE DEFINED FUNCTIONS
+    */
+    if (functionName == "printl")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            printf("%s\n", interpret(funcCall->parameterList[0], scope).cast_to_string().get_str().c_str());
-        }
-        else if (funcCall->parameterList.size() == 0)
-        {
+        if (children.size() == 1)
+            printf("%s\n", interpret(children[0]->get_child(0), scope).cast_to_string().get_str().c_str());
+        else if (children.size() == 0)
             printf("\n");
-        }
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " only takes one argument. Or none.");
-        }
+            Diagnostics::log_error(functionName + " only takes one argument. Or none.");
     }
-    else if (funcCall->functionName == "print")
+    else if (functionName == "print")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            printf("%s", interpret(funcCall->parameterList[0], scope).cast_to_string().get_str().c_str());
-        }
+        if (children.size() == 1)
+            printf("%s", interpret(children[0]->get_child(0), scope).cast_to_string().get_str().c_str());
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
-        }
+            Diagnostics::log_error(functionName + " takes one argument.");
     }
-    else if (funcCall->functionName == "input")
+    else if (functionName == "input")
     {
-        if (funcCall->parameterList.size() == 0)
+        if (children.size() == 0)
         {
             std::string line;
             getline(std::cin, line);
@@ -152,91 +151,76 @@ Object Runner::call_function(ast::FunctionCall* funcCall, Scope& scope)
         }
         else
         {
-            Diagnostics::log_error(funcCall->functionName + " takes no arguments.");
+            Diagnostics::log_error(functionName + " takes no arguments.");
         }
     }
-    else if (funcCall->functionName == "int")
+    else if (functionName == "int")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            return interpret(funcCall->parameterList[0]->root, scope).cast_to_int();
-        }
+        if (children.size() == 1)
+            return interpret(children[0]->get_child(0), scope).cast_to_int();
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
-        }
+            Diagnostics::log_error(functionName + " takes one argument.");
     }
-    else if (funcCall->functionName == "double")
+    else if (functionName == "double")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            return interpret(funcCall->parameterList[0]->root, scope).cast_to_double();
-        }
+        if (children.size() == 1)
+            return interpret(children[0]->get_child(0), scope).cast_to_double();
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
-        }
+            Diagnostics::log_error(functionName + " takes one argument.");
     }
-    else if (funcCall->functionName == "bool")
+    else if (functionName == "bool")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            return interpret(funcCall->parameterList[0]->root, scope).cast_to_bool();
-        }
+        if (children.size() == 1)
+            return interpret(children[0]->get_child(0), scope).cast_to_bool();
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
-        }
+            Diagnostics::log_error(functionName + " takes one argument.");
     }
-    else if (funcCall->functionName == "string")
+    else if (functionName == "string")
     {
-        if (funcCall->parameterList.size() == 1)
-        {
-            return interpret(funcCall->parameterList[0]->root, scope).cast_to_string();
-        }
+        if (children.size() == 1)
+            return interpret(children[0]->get_child(0), scope).cast_to_string();
         else
-        {
-            Diagnostics::log_error(funcCall->functionName + " takes one argument.");
-        }
+            Diagnostics::log_error(functionName + " takes one argument.");
     }
-    else if (ast::Function* func = scope.get_func(funcCall->functionName))
+    /**
+     * CUSTOM FUNCTIONS
+    */
+    else if (ast::Node* func = scope.get_func(functionName))
     {
+        if (func->get_type() != ast::NodeType::FUNCTION)
+            throw std::runtime_error("Not a function!");
+
+        auto funcInfo = *func->get_value<ast::FunctionInfo>();
+
+        // declare a scope and set up the scope's parameters
         Scope functionScope(&scope);
+        functionScope.canNestFunctions = true;
 
-        if (func->parameterNames.size() != funcCall->parameterList.size())
-            Diagnostics::log_error("Function call " + func->functionName + " did not match the functions parameter list.");
+        // sets up function's local passed in variables
+        if (funcInfo.paramNames.size() != children.size())
+            Diagnostics::log_error("Function call " + functionName + " did not match the functions parameter list.");
 
-        for (size_t i = 0; i < func->parameterNames.size(); ++i)
-        {
-            functionScope.add_var(func->parameterNames[i], interpret(funcCall->parameterList[i]->root, scope));
-        }
+        for (size_t i = 0; i < funcInfo.paramNames.size(); ++i)
+            functionScope.add_var(funcInfo.paramNames[i], interpret(children[i]->get_child(0), scope));
 
-        create_function_lookup_table(func->body, functionScope);
+        // allows for nesting functions within functions
+        create_function_lookup_table(func->get_child(0), functionScope);
 
-        for (const auto& stmt : func->body->statements)
-        {
-            if (stmt->get_type() == ast::StatementType::RETURN)
-            {
-                if (auto x = static_cast<ast::Return*>(stmt))
-                {
-                    return interpret(x->expression, functionScope);
-                }
-            }
-
-            interpret(stmt, functionScope);
-        }
-
-        return Object();
+        // runs the function
+        run_block(func->get_child(0), functionScope);
     }
+    /**
+     * FUNCTION DOES NOT EXIST
+    */
     else
     {
-        Diagnostics::log_error("Function " + funcCall->functionName + " has not been declared.");
+        Diagnostics::log_error("Function " + functionName + " has not been declared.");
     }
 
     return Object();
 }
 
-Object Runner::interpret(ast::Statement* stmt, Scope& scope)
+Object Runner::interpret(ast::Node* stmt, Scope& scope)
 {
     Diagnostics::info.lineNumber = stmt->get_line_index();
 
@@ -245,211 +229,151 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
         /**
          * Objects
         */
-        case ast::StatementType::INTEGER:
-            if (auto integer = static_cast<ast::Integer*>(stmt))
-            {
-                return Object(DataType::INTEGER, new int(integer->value));
-            }
-            break;
-        case ast::StatementType::DOUBLE:
-            if (auto _double = static_cast<ast::Double*>(stmt))
-            {
-                return Object(DataType::DOUBLE, new double(_double->value));
-            }
-            break;
-        case ast::StatementType::BOOLEAN:
-            if (auto boolean = static_cast<ast::Boolean*>(stmt))
-            {
-                return Object(DataType::BOOLEAN, new bool(boolean->value));
-            }
-            break;
-        case ast::StatementType::STRING:
-            if (auto _string = static_cast<ast::String*>(stmt))
-            {
-                return Object(DataType::STRING, new std::string(_string->value));
-            }
-            break;
-        case ast::StatementType::VARIABLE:
-            if (auto variable = static_cast<ast::Variable*>(stmt))
-            {
-                return scope.get_var(variable->name);
-            }
-            break;
-        case ast::StatementType::EXPRESSION:
-            if (auto expression = static_cast<ast::Expression*>(stmt))
-            {
-                return interpret(expression->root, scope);
-            }
-            break;
+        case ast::NodeType::INTEGER:
+            return Object(DataType::INTEGER, new int(*stmt->get_value<int>()));
+        case ast::NodeType::DOUBLE:
+            return Object(DataType::DOUBLE, new double(*stmt->get_value<double>()));
+        case ast::NodeType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(*stmt->get_value<bool>()));
+        case ast::NodeType::STRING:
+            return Object(DataType::STRING, new std::string(*stmt->get_value<std::string>()));
+        case ast::NodeType::VARIABLE:
+            return scope.get_var(*stmt->get_value<std::string>());
+        case ast::NodeType::EXPRESSION:
+            return interpret(stmt->get_child(0), scope);
 
         /**
          * Operators
         */
-        case ast::StatementType::ADD_OPERATOR:
-            if (auto x = static_cast<ast::AddOperator*>(stmt))
-            {
-                return interpret(x->left, scope).add_to(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::SUB_OPERATOR:
-            if (auto x = static_cast<ast::SubtractOperator*>(stmt))
-            {
-                return interpret(x->left, scope).subtract_from(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::MUL_OPERATOR:
-            if (auto x = static_cast<ast::MultiplyOperator*>(stmt))
-            {
-                return interpret(x->left, scope).multiplied_by(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::DIV_OPERATOR:
-            if (auto x = static_cast<ast::DivideOperator*>(stmt))
-            {
-                return interpret(x->left, scope).divided_by(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::MODULUS_OPERATOR:
-            if (auto x = static_cast<ast::ModulusOperator*>(stmt))
-            {
-                return interpret(x->left, scope).modulus_by(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::NEGATE:
-            if (auto x = static_cast<ast::Negate*>(stmt))
-            {
-                return interpret(x->value, scope).negate();
-            }
-            break;
-        case ast::StatementType::EQUALS_OPERATOR:
-            if (auto x = static_cast<ast::EqualsOperator*>(stmt))
-            {
-                return interpret(x->left, scope).equals(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::NOT_EQUALS_OPERATOR:
-            if (auto x = static_cast<ast::NotEqualsOperator*>(stmt))
-            {
-                return interpret(x->left, scope).not_equal_to(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::GREATER_THAN_OPERATOR:
-            if (auto x = static_cast<ast::GreaterThanOperator*>(stmt))
-            {
-                return interpret(x->left, scope).greater_than(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::LESS_THAN_OPERATOR:
-            if (auto x = static_cast<ast::LessThanOperator*>(stmt))
-            {
-                return interpret(x->left, scope).less_than(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::GREATER_THAN_EQUALS_OPERATOR:
-            if (auto x = static_cast<ast::GreaterThanEqualsOperator*>(stmt))
-            {
-                return interpret(x->left, scope).greater_than_or_equal_to(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::LESS_THAN_EQUALS_OPERATOR:
-            if (auto x = static_cast<ast::LessThanEqualsOperator*>(stmt))
-            {
-                return interpret(x->left, scope).less_than_or_equal_to(interpret(x->right, scope));
-            }
-            break;
-        case ast::StatementType::POWER_OPERATOR:
-            if (auto x = static_cast<ast::PowerOperator*>(stmt))
-            {
-                return interpret(x->left, scope).power(interpret(x->right, scope));
-            }
-            break;
+       // Binary operators
+        case ast::NodeType::ADD_OPERATOR:
+            return interpret(stmt->get_child(0), scope).add_to(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::SUB_OPERATOR:
+            return interpret(stmt->get_child(0), scope).subtract_from(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::MUL_OPERATOR:
+            return interpret(stmt->get_child(0), scope).multiplied_by(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::DIV_OPERATOR:
+            return interpret(stmt->get_child(0), scope).divided_by(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::MODULUS_OPERATOR:
+            return interpret(stmt->get_child(0), scope).modulus_by(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::EQUALS_OPERATOR:
+            return interpret(stmt->get_child(0), scope).equals(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::NOT_EQUALS_OPERATOR:
+            return interpret(stmt->get_child(0), scope).not_equal_to(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::GREATER_THAN_OPERATOR:
+            return interpret(stmt->get_child(0), scope).greater_than(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::LESS_THAN_OPERATOR:
+            return interpret(stmt->get_child(0), scope).less_than(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::GREATER_THAN_EQUALS_OPERATOR:
+            return interpret(stmt->get_child(0), scope).greater_than_or_equal_to(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::LESS_THAN_EQUALS_OPERATOR:
+            return interpret(stmt->get_child(0), scope).less_than_or_equal_to(interpret(stmt->get_child(1), scope));
+        case ast::NodeType::POWER_OPERATOR:
+            return interpret(stmt->get_child(0), scope).power(interpret(stmt->get_child(1), scope));
+        
+        // Unary operators
+        case ast::NodeType::NEGATE:
+            return interpret(stmt->get_child(0), scope).negate();
 
         /**
          * Operations
         */
-        case ast::StatementType::VARIABLE_ASSIGNMENT:
-            if (auto x = static_cast<ast::VariableAssignment*>(stmt))
+        case ast::NodeType::VARIABLE_ASSIGNMENT:
             {
-                if (!scope.has_var(x->variableName))
-                    scope.add_var(x->variableName, interpret(x->expression, scope));
+                auto name = *stmt->get_value<std::string>();
+
+                if (!scope.has_var(name))
+                    scope.add_var(name, interpret(stmt->get_child(0), scope));
                 else
-                    scope.get_var(x->variableName) = interpret(x->expression, scope);
+                    scope.get_var(name) = interpret(stmt->get_child(0), scope);
             }
             break;
-        case ast::StatementType::FUNCTION_CALL:
-            if (auto x = static_cast<ast::FunctionCall*>(stmt))
+
+        case ast::NodeType::FUNCTION_CALL:
+            return call_function(stmt, scope);
+
+        case ast::NodeType::WHILE:
             {
-                return call_function(x, scope);
-            }
-            break;
-        case ast::StatementType::WHILE:
-            if (auto x = static_cast<ast::While*>(stmt))
-            {
-                Object result = interpret(x->condition->root, scope);
+                auto condition = stmt->get_child(0)->get_child(0);
+                Object conditionResult = interpret(condition, scope);
 
                 while (true)
                 {
-                    if (result.get_type() != DataType::BOOLEAN)
+                    if (conditionResult.get_type() != DataType::BOOLEAN)
                         Diagnostics::log_warning("While loop did not recieve a boolean value.");
 
-                    if (result.get_type() == DataType::BOOLEAN && result.get_bool() != true)
+                    // if the result of the last run was false do not continue
+                    if (conditionResult.get_type() == DataType::BOOLEAN && !conditionResult.get_bool())
                         break;
 
                     Scope whileScope(&scope);
+                    Object stmtValue = run_block(stmt->get_child(1), whileScope);
 
-                    for (const auto& s : x->body->statements)
+                    if (whileScope.returnFlag)
                     {
-                        if (s->get_type() == ast::StatementType::FUNCTION)
-                            Diagnostics::log_error("Functions cannot be declared within while loops.");
-
-                        interpret(s, whileScope);
+                        scope.returnFlag = true;
+                        return stmtValue;
+                    }
+                    else if (whileScope.breakFlag)
+                    {
+                        return Object();
                     }
 
-                    result = interpret(x->condition->root, scope);
+                    // checks to see if the while loop should continue
+                    conditionResult = interpret(condition, scope);
                 }
             }
             break;
-        case ast::StatementType::IF:
-            if (auto x = static_cast<ast::If*>(stmt))
+
+        case ast::NodeType::IF:
             {
-                Object result = interpret(x->condition->root, scope);
+                Object conditionResult = interpret(stmt->get_child(0)->get_child(0), scope);
+
+                if (conditionResult.get_type() != DataType::BOOLEAN)
+                    Diagnostics::log_warning("If statement did not recieve a boolean value.");
 
                 Scope ifScope(&scope);
 
-                if (result.get_type() != DataType::BOOLEAN)
-                    Diagnostics::log_warning("If statement did not recieve a boolean value.");
-
-                if (result.get_type() == DataType::BOOLEAN && result.get_bool() == true)
+                if (conditionResult.get_type() == DataType::BOOLEAN && conditionResult.get_bool()) 
                 {
-                    for (const auto& s : x->body->statements) 
+                    Object stmtValue = run_block(stmt->get_child(1), ifScope);
+                    
+                    if (ifScope.returnFlag)
                     {
-                        if (s->get_type() == ast::StatementType::FUNCTION)
-                            Diagnostics::log_error("Functions cannot be declared within if statements.");
-
-                        interpret(s, ifScope);
+                        scope.returnFlag = true;
+                        return stmtValue;
                     }
                 }
-                else if (x->elseOrIf != nullptr)
+                else if (stmt->get_child(2) != nullptr)
                 {
-                    interpret(x->elseOrIf, scope);
+                    return interpret(stmt->get_child(2), scope);
                 }
             }
             break;
-        case ast::StatementType::ELSE:
-            if (auto x = static_cast<ast::Else*>(stmt))
+
+        case ast::NodeType::ELSE:
             {
                 Scope elseScope(&scope);
+                Object stmtValue = run_block(stmt->get_child(0), elseScope);
 
-                for (const auto& s : x->body->statements) 
+                if (elseScope.returnFlag)
                 {
-                    if (s->get_type() == ast::StatementType::FUNCTION)
-                        Diagnostics::log_error("Functions cannot be declared within else statements.");
-
-                    interpret(s, elseScope);
+                    scope.returnFlag = true;
+                    return stmtValue;
                 }
             }
             break;
-        case ast::StatementType::FUNCTION:
+
+        case ast::NodeType::RETURN:
+            scope.returnFlag = true;
+            return interpret(stmt->get_child(0)->get_child(0), scope);
+            break;
+
+        case ast::NodeType::BREAK:
+            scope.breakFlag = true;
+            break;
+
+        case ast::NodeType::FUNCTION:
             break;
         
         default:
@@ -460,10 +384,28 @@ Object Runner::interpret(ast::Statement* stmt, Scope& scope)
     return Object();
 }
 
+Object Runner::run_block(ast::Node* block, Scope& scope)
+{
+    for (const auto& s : block->get_children())
+    {
+        if (!scope.canNestFunctions && s->get_type() == ast::NodeType::FUNCTION)
+            Diagnostics::log_error("Nested functions can only be nested in other functions.");
+
+        Object stmtValue = interpret(s, scope);
+
+        if (scope.returnFlag)
+            return stmtValue;
+        else if (scope.breakFlag)
+            return Object();
+    }
+
+    return Object();
+}
+
 void Runner::run(ast::AST& ast)
 {
     create_function_lookup_table(ast.root, _rootScope);
 
-    for (auto stat : ast.root->statements)
+    for (auto stat : ast.root->get_children())
         interpret(stat, _rootScope);
 }

@@ -1,536 +1,184 @@
+#include "diagnostics.hpp"
+
 #include "ast.hpp"
 
 using namespace ast;
 
-std::string ast::get_statement_type_name(StatementType type)
+std::string ast::get_statement_type_name(NodeType type)
 {
     switch (type)
     {
-        case StatementType::NONE: return "NONE";
-        case StatementType::UNARY_OPERATOR: return "UNARY OPERATOR";
-        case StatementType::BINARY_OPERATOR: return "BINARY OPERATOR";
-        case StatementType::ADD_OPERATOR: return "ADD OPERATOR";
-        case StatementType::SUB_OPERATOR: return "SUBTRACT OPERATOR";
-        case StatementType::DIV_OPERATOR: return "DIVIDE OPERATOR";
-        case StatementType::MUL_OPERATOR: return "MULTIPLY OPERATOR";
-        case StatementType::DOUBLE: return "DOUBLE";
-        case StatementType::INTEGER: return "INTEGER";
-        case StatementType::STRING: return "STRING";
-        case StatementType::EXPRESSION: return "EXPRESSION";
-        case StatementType::VARIABLE_ASSIGNMENT: return "VARIABLE ASSIGNMENT";
-        case StatementType::BLOCK: return "BLOCK";
-        case StatementType::VARIABLE: return "VARIABLE";
-        case StatementType::FUNCTION_CALL: return "FUNCTION CALL";
-        case StatementType::NEGATE: return "NEGATE";
-        case StatementType::BOOLEAN: return "BOOLEAN";
-        case StatementType::EQUALS_OPERATOR: return "EQUALS OPERATOR";
-        case StatementType::NOT_EQUALS_OPERATOR: return "NOT EQUALS OPERATOR";
-        case StatementType::GREATER_THAN_OPERATOR: return "GREATER THAN OPERATOR";
-        case StatementType::LESS_THAN_OPERATOR: return "LESS THAN OPERATOR";
-        case StatementType::GREATER_THAN_EQUALS_OPERATOR: return "GREATER THAN EQUALS OPERATOR";
-        case StatementType::LESS_THAN_EQUALS_OPERATOR: return "LESS THAN EQUALS OPERATOR";
-        case StatementType::IF: return "IF";
-        case StatementType::ELSE: return "ELSE";
-        case StatementType::WHILE: return "WHILE";
-        case StatementType::FOR: return "FOR";
-        case StatementType::AND_CONDITION: return "AND CONDITION";
-        case StatementType::OR_CONDITION: return "OR CONDITION";
-        case StatementType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
-        case StatementType::FUNCTION: return "FUNCTION";
-        case StatementType::RETURN: return "RETURN";
-        case StatementType::POWER_OPERATOR: return "POWER OPERATOR";
+        case NodeType::NONE: return "NONE";
+        case NodeType::UNARY_OPERATOR: return "UNARY OPERATOR";
+        case NodeType::BINARY_OPERATOR: return "BINARY OPERATOR";
+        case NodeType::ADD_OPERATOR: return "ADD OPERATOR";
+        case NodeType::SUB_OPERATOR: return "SUBTRACT OPERATOR";
+        case NodeType::DIV_OPERATOR: return "DIVIDE OPERATOR";
+        case NodeType::MUL_OPERATOR: return "MULTIPLY OPERATOR";
+        case NodeType::DOUBLE: return "DOUBLE";
+        case NodeType::INTEGER: return "INTEGER";
+        case NodeType::STRING: return "STRING";
+        case NodeType::EXPRESSION: return "EXPRESSION";
+        case NodeType::VARIABLE_ASSIGNMENT: return "VARIABLE ASSIGNMENT";
+        case NodeType::BLOCK: return "BLOCK";
+        case NodeType::VARIABLE: return "VARIABLE";
+        case NodeType::FUNCTION_CALL: return "FUNCTION CALL";
+        case NodeType::NEGATE: return "NEGATE";
+        case NodeType::BOOLEAN: return "BOOLEAN";
+        case NodeType::EQUALS_OPERATOR: return "EQUALS OPERATOR";
+        case NodeType::NOT_EQUALS_OPERATOR: return "NOT EQUALS OPERATOR";
+        case NodeType::GREATER_THAN_OPERATOR: return "GREATER THAN OPERATOR";
+        case NodeType::LESS_THAN_OPERATOR: return "LESS THAN OPERATOR";
+        case NodeType::GREATER_THAN_EQUALS_OPERATOR: return "GREATER THAN EQUALS OPERATOR";
+        case NodeType::LESS_THAN_EQUALS_OPERATOR: return "LESS THAN EQUALS OPERATOR";
+        case NodeType::IF: return "IF";
+        case NodeType::ELSE: return "ELSE";
+        case NodeType::WHILE: return "WHILE";
+        case NodeType::FOR: return "FOR";
+        case NodeType::AND_CONDITION: return "AND CONDITION";
+        case NodeType::OR_CONDITION: return "OR CONDITION";
+        case NodeType::MODULUS_OPERATOR: return "MODULUS OPERATOR";
+        case NodeType::FUNCTION: return "FUNCTION";
+        case NodeType::RETURN: return "RETURN";
+        case NodeType::POWER_OPERATOR: return "POWER OPERATOR";
+        case NodeType::BREAK: return "BREAK";
         default: return "UNDEFINED";
     }
 }
 
 #pragma region Statement
 
-Statement::Statement(int lineIndex)
+Node::Node(const Node& other)
 {
+    _type = other._type;
+    _value = new void*(other._value);
+    _lineIndex = other._lineIndex;
+
+    for (auto stmt : other._children)
+    {
+        if (stmt != nullptr)
+        {
+            _children.push_back(new Node(*stmt));
+        }
+    }
+}
+
+Node* Node::operator=(const Node* other)
+{
+    clean_up();
+
+    _type = other->_type;
+    _value = new void*(other->_value);
+    _lineIndex = other->_lineIndex;
+
+    for (auto stmt : other->_children)
+    {
+        if (stmt != nullptr)
+        {
+            _children.push_back(new Node(*stmt));
+        }
+    }
+    
+    return this;
+}
+
+Node::Node(NodeType type, int lineIndex)
+{
+    _type = type;
+    _value = nullptr;
     _lineIndex = lineIndex;
 }
 
-Statement::~Statement() { }
-
-StatementType Statement::get_type()
+Node::Node(NodeType type, int lineIndex, std::vector<Node*> children)
 {
-    throw std::runtime_error("Statement function get_type not implemented!");
+    _type = type;
+    _value = nullptr;
+    _lineIndex = lineIndex;
+    _children = children;
 }
 
-int Statement::get_line_index()
+Node::Node(NodeType type, void* value, int lineIndex)
+{
+    _type = type;
+    _value = value;
+    _lineIndex = lineIndex;
+}
+
+Node::Node(NodeType type, void* value, int lineIndex, std::vector<Node*> children)
+{
+    _type = type;
+    _value = value;
+    _lineIndex = lineIndex;
+    _children = children;
+}
+
+Node::~Node()
+{
+    clean_up();
+}
+
+void Node::clean_up()
+{
+    if (_value == nullptr) return;
+
+    switch (_type)
+    {
+        case NodeType::DOUBLE:
+            delete static_cast<double*>(_value);
+            break;
+        case NodeType::INTEGER:
+            delete static_cast<int*>(_value);
+            break;
+        case NodeType::BOOLEAN:
+            delete static_cast<bool*>(_value);
+            break;
+        case NodeType::STRING:
+        case NodeType::VARIABLE_ASSIGNMENT:
+        case NodeType::VARIABLE:
+        case NodeType::FUNCTION_CALL:
+            delete static_cast<std::string*>(_value);
+            break;
+        case NodeType::FUNCTION:
+            delete static_cast<FunctionInfo*>(_value);
+            break;
+        default:
+            Diagnostics::log_error("Node of type [" + get_statement_type_name(_type) + "] could not be deleted!");
+            break;
+    }
+
+    for (auto stmt : _children)
+    {
+        if (stmt != nullptr)
+            delete stmt;
+    }
+}
+
+NodeType Node::get_type()
+{
+    return _type;
+}
+
+std::vector<Node*>& Node::get_children()
+{
+    return _children;
+}
+
+Node* Node::get_child(size_t index)
+{
+    if (index >= 0 && index < _children.size())
+        return _children[index]; 
+
+    return nullptr;
+}
+
+void Node::add_child(Node* child)
+{
+    _children.push_back(child);
+}
+
+int Node::get_line_index()
 {
     return _lineIndex;
-}
-
-#pragma endregion
-
-#pragma region UnaryOperator
-
-UnaryOperator::UnaryOperator(Statement* value, int lineIndex) : Statement(lineIndex)
-{
-    this->value = value;
-}
-
-UnaryOperator::~UnaryOperator()
-{
-    if (value != NULL)
-        delete value;
-}
-
-StatementType UnaryOperator::get_type()
-{
-    return StatementType::UNARY_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region BinaryOperator
-
-BinaryOperator::BinaryOperator(Statement* left, Statement* right, int lineIndex) : Statement(lineIndex)
-{
-    this->left = left;
-    this->right = right;
-}
-
-BinaryOperator::~BinaryOperator()
-{
-    if (left != NULL) 
-        delete left;
-    
-    if (right != NULL)
-        delete right;
-}
-
-StatementType BinaryOperator::get_type() 
-{
-    return StatementType::BINARY_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region AddOperator
-
-AddOperator::AddOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType AddOperator::get_type()
-{
-    return StatementType::ADD_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region SubtractOperator
-
-SubtractOperator::SubtractOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType SubtractOperator::get_type()
-{
-    return StatementType::SUB_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region DivideOperator
-
-DivideOperator::DivideOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType DivideOperator::get_type()
-{
-    return StatementType::DIV_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region ModulusOperator
-
-ModulusOperator::ModulusOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType ModulusOperator::get_type()
-{
-    return StatementType::MODULUS_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region MultiplyOperator
-
-MultiplyOperator::MultiplyOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType MultiplyOperator::get_type()
-{
-    return StatementType::MUL_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region EqualsOperator
-
-EqualsOperator::EqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType EqualsOperator::get_type()
-{
-    return StatementType::EQUALS_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region PowerOperator
-
-PowerOperator::PowerOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType PowerOperator::get_type()
-{
-    return StatementType::POWER_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region NotEqualsOperator
-
-NotEqualsOperator::NotEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType NotEqualsOperator::get_type()
-{
-    return StatementType::NOT_EQUALS_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region GreaterThanOperator
-
-GreaterThanOperator::GreaterThanOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType GreaterThanOperator::get_type()
-{
-    return StatementType::GREATER_THAN_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region LessThanOperator
-
-LessThanOperator::LessThanOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType LessThanOperator::get_type()
-{
-    return StatementType::LESS_THAN_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region GreaterThanEqualsOperator
-
-GreaterThanEqualsOperator::GreaterThanEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType GreaterThanEqualsOperator::get_type()
-{
-    return StatementType::GREATER_THAN_EQUALS_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region LessThanEqualsOperator
-
-LessThanEqualsOperator::LessThanEqualsOperator(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType LessThanEqualsOperator::get_type()
-{
-    return StatementType::LESS_THAN_EQUALS_OPERATOR;
-}
-
-#pragma endregion
-
-#pragma region AndCondition
-
-AndCondition::AndCondition(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType AndCondition::get_type()
-{
-    return StatementType::AND_CONDITION;
-}
-
-#pragma endregion
-
-#pragma region OrCondition
-
-OrCondition::OrCondition(Statement* left, Statement* right, int lineIndex) : BinaryOperator(left, right, lineIndex) { }
-
-StatementType OrCondition::get_type()
-{
-    return StatementType::OR_CONDITION;
-}
-
-#pragma endregion
-
-#pragma region Double
-
-Double::Double(double value, int lineIndex) : Statement(lineIndex)
-{
-    this->value = value;
-}
-
-StatementType Double::get_type()
-{
-    return StatementType::DOUBLE;
-}
-
-#pragma endregion
-
-#pragma region Integer
-
-Integer::Integer(int value, int lineIndex) : Statement(lineIndex)
-{
-    this->value = value;
-}
-
-StatementType Integer::get_type()
-{
-    return StatementType::INTEGER;
-}
-
-#pragma endregion
-
-#pragma region String
-
-String::String(std::string value, int lineIndex) : Statement(lineIndex)
-{
-    this->value = value;
-}
-
-StatementType String::get_type() 
-{
-    return StatementType::STRING;
-}
-
-#pragma endregion
-
-#pragma region Expression
-
-Expression::Expression(Statement* root, int lineIndex) : Statement(lineIndex)
-{
-    this->root = root;
-}
-
-Expression::~Expression()
-{
-    if (root != NULL)
-        delete root;
-}
-
-StatementType Expression::get_type()
-{
-    return StatementType::EXPRESSION;
-}
-
-#pragma endregion
-
-#pragma region VariableAssignment
-
-VariableAssignment::VariableAssignment(std::string variableName, Expression* expression, int lineIndex) : Statement(lineIndex)
-{
-    this->variableName = variableName;
-    this->expression = expression;
-}
-
-VariableAssignment::~VariableAssignment()
-{
-    if (expression != NULL)
-        delete expression;
-}
-
-StatementType VariableAssignment::get_type()
-{
-    return StatementType::VARIABLE_ASSIGNMENT;
-}
-
-#pragma endregion
-
-#pragma region Variable
-
-Variable::Variable(std::string name, int lineIndex) : Statement(lineIndex)
-{
-    this->name = name;
-}
-
-StatementType Variable::get_type()
-{
-    return StatementType::VARIABLE;
-}
-
-#pragma endregion
-
-#pragma region Block
-
-Block::Block(int lineIndex) : Statement(lineIndex) { }
-
-Block::~Block()
-{
-    for (int i = 0; i < statements.size(); ++i)
-    {
-        if (statements[i] != NULL)
-            delete statements[i];
-    }
-}
-
-StatementType Block::get_type()
-{
-    return StatementType::BLOCK;
-}
-
-#pragma endregion
-
-#pragma region FunctionCall
-
-FunctionCall::FunctionCall(std::string functionName, int lineIndex) : Statement(lineIndex)
-{
-    this->functionName = functionName;
-}
-
-FunctionCall::~FunctionCall()
-{
-    for (int i = 0; i < parameterList.size(); ++i)
-    {
-        if (parameterList[i] != NULL)
-            delete parameterList[i];
-    }
-}
-
-StatementType FunctionCall::get_type()
-{
-    return StatementType::FUNCTION_CALL;
-}
-
-#pragma endregion
-
-#pragma region Function
-
-Function::Function(std::string functionName, Block* body, int lineIndex) : Statement(lineIndex)
-{
-    this->functionName = functionName;
-    this->body = body;
-}
-
-Function::~Function()
-{
-    delete body;
-}
-
-StatementType Function::get_type() 
-{
-    return StatementType::FUNCTION;
-}
-
-#pragma endregion
-
-#pragma region Negate
-
-Negate::Negate(Statement* value, int lineIndex) : UnaryOperator(value, lineIndex) { }
-
-StatementType Negate::get_type()
-{
-    return StatementType::NEGATE;
-}
-
-#pragma endregion
-
-#pragma region Boolean
-
-Boolean::Boolean(bool value, int lineIndex) : Statement(lineIndex)
-{
-    this->value = value;
-}
-
-StatementType Boolean::get_type()
-{
-    return StatementType::BOOLEAN;
-}
-
-#pragma endregion
-
-#pragma region If
-
-If::If(Expression* condition, Block* body, int lineIndex) : Statement(lineIndex)
-{
-    this->condition = condition;
-    this->body = body;
-    this->elseOrIf = nullptr;
-}
-
-If::~If()
-{
-    if (condition != nullptr)
-        delete condition;
-
-    if (body != nullptr)
-        delete body;
-}
-
-StatementType If::get_type()
-{
-    return StatementType::IF;
-}
-
-#pragma endregion
-
-#pragma region Else
-
-Else::Else(Block* body, int lineIndex) : Statement(lineIndex)
-{
-    this->body = body;
-}
-
-Else::~Else()
-{
-    if (body != nullptr)
-        delete body;
-}
-
-StatementType Else::get_type()
-{
-    return StatementType::ELSE;
-}
-
-#pragma endregion
-
-#pragma region While
-
-While::While(Expression* condition, Block* body, int lineIndex) : Statement(lineIndex)
-{
-    this->condition = condition;
-    this->body = body;
-}
-
-While::~While()
-{
-    if (condition != nullptr)
-        delete condition;
-
-    if (body != nullptr)
-        delete body;
-}
-
-StatementType While::get_type()
-{
-    return StatementType::WHILE;
-}
-
-#pragma endregion
-
-#pragma region Return
-
-Return::Return(Expression* expression, int lineIndex) : Statement(lineIndex)
-{
-    this->expression = expression;
-}
-
-Return::~Return()
-{
-    delete expression;
-}
-
-StatementType Return::get_type()
-{
-    return StatementType::RETURN;
 }
 
 #pragma endregion
@@ -544,11 +192,14 @@ AST::~AST()
 
 void AST::print()
 {
-    for (auto stmt : root->statements)
+    if (root->get_type() != NodeType::BLOCK)
+        throw std::runtime_error("Not a block!");
+
+    for (auto stmt : root->get_children())
         print_statement(stmt, "");
 }
 
-void AST::print_statement(Statement* stmt, std::string indent)
+void AST::print_statement(Node* stmt, std::string indent)
 {
     if (stmt == NULL)
     {
@@ -559,160 +210,122 @@ void AST::print_statement(Statement* stmt, std::string indent)
     printf("%s%s\n", indent.c_str(), get_statement_type_name(stmt->get_type()).c_str());
     switch (stmt->get_type())
     {
-        case StatementType::NONE:
+        case NodeType::NONE:
             break;
-        case StatementType::UNARY_OPERATOR:
-            if (UnaryOperator* value = static_cast<UnaryOperator*>(stmt))
-                print_statement(value->value, indent + '\t');
+        case NodeType::UNARY_OPERATOR:
+        case NodeType::NEGATE:
+            print_statement(stmt->get_child(0), indent + '\t');
             break;
-        case StatementType::BINARY_OPERATOR:
-        case StatementType::ADD_OPERATOR:
-        case StatementType::SUB_OPERATOR:
-        case StatementType::DIV_OPERATOR:
-        case StatementType::MUL_OPERATOR:
-        case StatementType::EQUALS_OPERATOR:
-        case StatementType::NOT_EQUALS_OPERATOR:
-        case StatementType::GREATER_THAN_OPERATOR:
-        case StatementType::LESS_THAN_OPERATOR:
-        case StatementType::GREATER_THAN_EQUALS_OPERATOR:
-        case StatementType::LESS_THAN_EQUALS_OPERATOR:
-        case StatementType::AND_CONDITION:
-        case StatementType::OR_CONDITION:
-        case StatementType::MODULUS_OPERATOR:
-        case StatementType::POWER_OPERATOR:
+        case NodeType::BINARY_OPERATOR:
+        case NodeType::ADD_OPERATOR:
+        case NodeType::SUB_OPERATOR:
+        case NodeType::DIV_OPERATOR:
+        case NodeType::MUL_OPERATOR:
+        case NodeType::EQUALS_OPERATOR:
+        case NodeType::NOT_EQUALS_OPERATOR:
+        case NodeType::GREATER_THAN_OPERATOR:
+        case NodeType::LESS_THAN_OPERATOR:
+        case NodeType::GREATER_THAN_EQUALS_OPERATOR:
+        case NodeType::LESS_THAN_EQUALS_OPERATOR:
+        case NodeType::AND_CONDITION:
+        case NodeType::OR_CONDITION:
+        case NodeType::MODULUS_OPERATOR:
+        case NodeType::POWER_OPERATOR:
             printf("%sLEFT:\n", indent.c_str());
-            if (BinaryOperator* value = static_cast<BinaryOperator*>(stmt))
-                print_statement(value->left, indent + '\t');
+            print_statement(stmt->get_child(0), indent + '\t');
             printf("%sRIGHT:\n", indent.c_str());
-            if (BinaryOperator* value = static_cast<BinaryOperator*>(stmt))
-                print_statement(value->right, indent + '\t');
+            print_statement(stmt->get_child(1), indent + '\t');
             break;
-        case StatementType::DOUBLE:
-            if (Double* _double = static_cast<Double*>(stmt))
-                printf("%s%f\n", indent.c_str(), _double->value);
+        case NodeType::DOUBLE:
+            printf("%s%f\n", indent.c_str(), *stmt->get_value<double>());
             break;
-        case StatementType::INTEGER:
-            if (Integer* integer = static_cast<Integer*>(stmt))
-                printf("%s%i\n", indent.c_str(), integer->value);
+        case NodeType::INTEGER:
+            printf("%s%i\n", indent.c_str(), *stmt->get_value<int>());
             break;
-        case StatementType::STRING:
-            if (String* str = static_cast<String*>(stmt))
-                printf("%s%s\n", indent.c_str(), str->value.c_str());
+        case NodeType::STRING:
+            printf("%s%s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
             break;
-        case StatementType::EXPRESSION:
-            if (Expression* exp = static_cast<Expression*>(stmt))
-                print_statement(exp->root, indent + '\t');
+        case NodeType::EXPRESSION:
+            print_statement(stmt->get_child(0), indent + '\t');
             break;
-        case StatementType::VARIABLE_ASSIGNMENT:
-            if (VariableAssignment* varDec = static_cast<VariableAssignment*>(stmt))
+        case NodeType::VARIABLE_ASSIGNMENT:
+            printf("%sNAME: |%s|\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            print_statement(stmt->get_child(0), indent + '\t');
+            break;
+        case NodeType::BLOCK:
+            for (auto statement : stmt->get_children())
+                print_statement(statement, indent + '\t');
+            break;
+        case NodeType::VARIABLE:
+            printf("%sNAME: %s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            break;
+        case NodeType::FUNCTION_CALL:
+            printf("%sFunction Name: %s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            printf("%s---PARAMETER LIST:\n", indent.c_str());
+            for (auto e : stmt->get_children())
+                print_statement(e, indent + '\t');
+            break;
+        case NodeType::BOOLEAN:
+            if (stmt->get_value<bool>())
             {
-                printf("%sNAME: |%s|\n", indent.c_str(), varDec->variableName.c_str());
-                print_statement(varDec->expression, indent + '\t');
+                printf("%sTRUE\n", indent.c_str());
+            }
+            else
+            {
+                printf("%sFALSE\n", indent.c_str());
             }
             break;
-        case StatementType::BLOCK:
-            if (Block* block = static_cast<Block*>(stmt))
-            {
-                for (auto statement : block->statements)
-                    print_statement(statement, indent + '\t');
-            }
-            break;
-        case StatementType::VARIABLE:
-            if (Variable* variable = static_cast<Variable*>(stmt))
-                printf("%sNAME: %s\n", indent.c_str(), variable->name.c_str());
-            break;
-        case StatementType::FUNCTION_CALL:
-            if (FunctionCall* funcCall = static_cast<FunctionCall*>(stmt))
-            {
-                printf("%sFunction Name: %s\n", indent.c_str(), funcCall->functionName.c_str());
-                printf("%s---PARAMETER LIST:\n", indent.c_str());
-                for (auto e : funcCall->parameterList)
-                    print_statement(e, indent + '\t');
-            }
-            break;
-        case StatementType::NEGATE:
-            if (Negate* negate = static_cast<Negate*>(stmt))
-            {
-                print_statement(negate->value, indent + '\t');
-            }
-            break;
-        case StatementType::BOOLEAN:
-            if (Boolean* b = static_cast<Boolean*>(stmt))
-            {
-                if (b->value)
-                {
-                    printf("%sTRUE\n", indent.c_str());
-                }
-                else
-                {
-                    printf("%sFALSE\n", indent.c_str());
-                }
-            }
-            break;
-        case StatementType::IF:
-            if (If* _if = static_cast<If*>(stmt))
-            {
-                printf("%sCONDITION:\n", indent.c_str());
-                print_statement(_if->condition, indent + '\t');
-                printf("%sBODY:\n", indent.c_str());
-                print_statement(_if->body, indent + '\t');
+        case NodeType::IF:
+            printf("%sCONDITION:\n", indent.c_str());
+            print_statement(stmt->get_child(0), indent + '\t');
+            printf("%sBODY:\n", indent.c_str());
+            print_statement(stmt->get_child(1), indent + '\t');
 
-                if (_if->elseOrIf != nullptr)
-                {
-                    printf("%sCHILD STATEMENT:\n", indent.c_str());
-                    print_statement(_if->elseOrIf, indent + '\t');
-                }
+            if (stmt->get_child(2) != nullptr)
+            {
+                printf("%sCHILD STATEMENT:\n", indent.c_str());
+                print_statement(stmt->get_child(2), indent + '\t');
             }
             break;
-        case StatementType::ELSE:
-            if (Else* _else = static_cast<Else*>(stmt))
-            {
-                printf("%sBODY:\n", indent.c_str());
-                print_statement(_else->body, indent + '\t');
-            }
+        case NodeType::ELSE:
+            printf("%sBODY:\n", indent.c_str());
+            print_statement(stmt->get_child(0), indent + '\t');
             break;
-        case StatementType::WHILE:
-            if (While* _while = static_cast<While*>(stmt))
-            {
-                printf("%sCONDITION:\n", indent.c_str());
-                print_statement(_while->condition, indent + '\t');
-                printf("%sBODY:\n", indent.c_str());
-                print_statement(_while->body, indent + '\t');
-            }
+        case NodeType::WHILE:
+            printf("%sCONDITION:\n", indent.c_str());
+            print_statement(stmt->get_child(0), indent + '\t');
+            printf("%sBODY:\n", indent.c_str());
+            print_statement(stmt->get_child(1), indent + '\t');
             break;
-        case StatementType::FUNCTION:
-            if (Function* func = static_cast<Function*>(stmt))
+        case NodeType::FUNCTION:
             {
-                printf("%sNAME: %s\n", indent.c_str(), func->functionName.c_str());
+                FunctionInfo funcInfo = *stmt->get_value<FunctionInfo>();
+
+                printf("%sNAME: %s\n", indent.c_str(), funcInfo.functionName.c_str());
                 printf("%sPARAMETERS: [", indent.c_str());
 
-                if (func->parameterNames.size() == 0)
+                if (funcInfo.paramNames.size() <= 1)
                 {
                     printf("]\n");
                 }
                 else
                 {
-                    for (size_t i = 0; i < func->parameterNames.size(); ++i)
+                    for (size_t i = 1; i < funcInfo.paramNames.size(); ++i)
                     {
-                        if (i != func->parameterNames.size() - 1)
-                            printf("%s, ", func->parameterNames[i].c_str());
+                        if (i != funcInfo.paramNames.size() - 1)
+                            printf("%s, ", funcInfo.paramNames[i].c_str());
                         else
-                            printf("%s]\n", func->parameterNames[i].c_str());
+                            printf("%s]\n", funcInfo.paramNames[i].c_str());
                     }
                 }
 
                 printf("%sBODY:\n", indent.c_str());
-                print_statement(func->body, indent + '\t');
+                print_statement(stmt->get_child(0), indent + '\t');
             }
             break;
-        case StatementType::RETURN:
-            if (Return* _return = static_cast<Return*>(stmt))
-            {
-                if (_return->expression != nullptr)
-                {
-                    print_statement(_return->expression, indent + '\t');
-                }
-            }
+        case NodeType::RETURN:
+            if (stmt->get_child(0) != nullptr)
+                print_statement(stmt->get_child(0), indent + '\t');
             break;
     }
 }

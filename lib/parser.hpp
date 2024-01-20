@@ -29,20 +29,20 @@ namespace prs
         lex::Token peek_next_non_wspace_pass_eols();
         bool is_end_of_statement();
 
-        ast::Expression* parse_expression();
-        ast::Statement* parse_condition();
-        ast::Statement* parse_equality();
-        ast::Statement* parse_addend();
-        ast::Statement* parse_term();
-        ast::Statement* parse_power();
-        ast::Statement* parse_factor();
+        ast::Node* parse_expression();
+        ast::Node* parse_condition();
+        ast::Node* parse_equality();
+        ast::Node* parse_addend();
+        ast::Node* parse_term();
+        ast::Node* parse_power();
+        ast::Node* parse_factor();
 
-        ast::If* parse_if();
-        ast::Else* parse_else();
+        ast::Node* parse_if();
+        ast::Node* parse_else();
 
-        ast::Statement* parse_next_statement();
-        ast::FunctionCall* parse_function_call();
-        ast::Block* parse_block();
+        ast::Node* parse_next_statement();
+        ast::Node* parse_function_call();
+        ast::Node* parse_block();
 
         public:
             Parser();
