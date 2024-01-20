@@ -2,9 +2,8 @@
 
 ## About
 
-Popcorn is a language created in c++ for fun.
-
-Eventually files will be ended with the extension `.pop` to run.
+Popcorn is a language created in C++ for fun.<br>
+Compile with `make`.
 
 ### Operators
 
