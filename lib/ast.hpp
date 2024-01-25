@@ -47,7 +47,7 @@ namespace ast
 
     std::string get_statement_type_name(NodeType type);
 
-    struct FunctionInfo
+    struct FunctionData
     {
         std::string functionName;
         std::vector<std::string> paramNames;
@@ -61,14 +61,13 @@ namespace ast
         int _lineIndex;
 
         public:
+            Node(const Node& other);
+            Node* operator=(const Node* other);
             Node(NodeType type, int lineIndex);
             Node(NodeType type, int lineIndex, std::vector<Node*> children);
             Node(NodeType type, void* value, int lineIndex);
             Node(NodeType type, void* value, int lineIndex, std::vector<Node*> children);
             ~Node();
-
-            Node(const Node& other);
-            Node* operator=(const Node* other);
 
             void clean_up();
 

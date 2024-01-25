@@ -46,12 +46,10 @@ std::string ast::get_statement_type_name(NodeType type)
     }
 }
 
-#pragma region Statement
-
 Node::Node(const Node& other)
 {
     _type = other._type;
-    _value = new void*(other._value);
+    _value = other._value;
     _lineIndex = other._lineIndex;
 
     for (auto stmt : other._children)
@@ -68,7 +66,7 @@ Node* Node::operator=(const Node* other)
     clean_up();
 
     _type = other->_type;
-    _value = new void*(other->_value);
+    _value = other->_value;
     _lineIndex = other->_lineIndex;
 
     for (auto stmt : other->_children)
@@ -139,7 +137,7 @@ void Node::clean_up()
             delete static_cast<std::string*>(_value);
             break;
         case NodeType::FUNCTION:
-            delete static_cast<FunctionInfo*>(_value);
+            delete static_cast<FunctionData*>(_value);
             break;
         default:
             Diagnostics::log_error("Node of type [" + get_statement_type_name(_type) + "] could not be deleted!");
@@ -180,10 +178,6 @@ int Node::get_line_index()
 {
     return _lineIndex;
 }
-
-#pragma endregion
-
-#pragma region AST
 
 AST::~AST()
 {
@@ -299,7 +293,7 @@ void AST::print_statement(Node* stmt, std::string indent)
             break;
         case NodeType::FUNCTION:
             {
-                FunctionInfo funcInfo = *stmt->get_value<FunctionInfo>();
+                FunctionData funcInfo = *stmt->get_value<FunctionData>();
 
                 printf("%sNAME: %s\n", indent.c_str(), funcInfo.functionName.c_str());
                 printf("%sPARAMETERS: [", indent.c_str());
@@ -329,5 +323,3 @@ void AST::print_statement(Node* stmt, std::string indent)
             break;
     }
 }
-
-#pragma endregion

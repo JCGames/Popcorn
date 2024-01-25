@@ -32,7 +32,7 @@ void Runner::create_function_lookup_table(ast::Node* block, Scope& scope)
 
         if (stmt->get_type() == ast::NodeType::FUNCTION)
         {
-            scope.add_func((*stmt->get_value<ast::FunctionInfo>()).functionName, stmt);
+            scope.add_func((*stmt->get_value<ast::FunctionData>()).functionName, stmt);
         }
     }
 }
@@ -110,7 +110,7 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
         if (func->get_type() != ast::NodeType::FUNCTION)
             throw std::runtime_error("Not a function!");
 
-        auto funcInfo = *func->get_value<ast::FunctionInfo>();
+        auto funcInfo = *func->get_value<ast::FunctionData>();
 
         // declare a scope and set up the scope's parameters
         Scope functionScope(&scope);

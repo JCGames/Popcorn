@@ -7,6 +7,7 @@
 #include "lib/runner.hpp"
 #include "lib/console.hpp"
 #include "lib/diagnostics.hpp"
+#include "lib/any.hpp"
 
 using namespace std;
 
@@ -16,7 +17,7 @@ string get_file_ext(const string& s)
 {
     size_t i = s.rfind('.', s.length());
     if (i != string::npos)
-        return(s.substr(i+1, s.length() - i));
+        return(s.substr(i + 1, s.length() - i));
 
     return("");
 }
@@ -26,7 +27,10 @@ int main(int argc, char** args)
     for (int i = 0; i < argc; ++i)
     {
         if (strcmp(args[i], "-d") == 0)
+        {
             DEBUG = true;
+            DO_ANY_DEBUG = true;
+        }
     }
 
     if (argc > 1)

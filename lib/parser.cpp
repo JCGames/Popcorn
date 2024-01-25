@@ -437,8 +437,8 @@ Node* Parser::parse_next_statement()
         if (_currentToken.type != TokenType::WORD)
             Diagnostics::log_error("Function definition is lacking a name.");
 
-        auto func = new Node(NodeType::FUNCTION, new FunctionInfo{ _currentToken.value }, _currentToken.lineNumber);
-        auto funcInfo = func->get_value<FunctionInfo>();
+        auto func = new Node(NodeType::FUNCTION, new FunctionData{ _currentToken.value }, _currentToken.lineNumber);
+        auto funcInfo = func->get_value<FunctionData>();
         
         move_next_non_wspace();
 
