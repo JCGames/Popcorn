@@ -32,14 +32,14 @@ void Runner::create_function_lookup_table(ast::Node* block, Scope& scope)
 
         if (stmt->get_type() == ast::NodeType::FUNCTION)
         {
-            scope.add_func((*stmt->get_value<ast::FunctionData>()).functionName, stmt);
+            scope.add_func((stmt->get_value<ast::FunctionData>()).functionName, stmt);
         }
     }
 }
 
 Object Runner::call_function(ast::Node* funcCall, Scope& scope)
 {
-    std::string functionName = *funcCall->get_value<std::string>();
+    std::string functionName = funcCall->get_value<std::string>();
     auto children = funcCall->get_children();
 
     /**
@@ -110,7 +110,7 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
         if (func->get_type() != ast::NodeType::FUNCTION)
             throw std::runtime_error("Not a function!");
 
-        auto funcInfo = *func->get_value<ast::FunctionData>();
+        auto funcInfo = func->get_value<ast::FunctionData>();
 
         // declare a scope and set up the scope's parameters
         Scope functionScope(&scope);
@@ -150,15 +150,15 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
          * Objects
         */
         case ast::NodeType::INTEGER:
-            return Object(DataType::INTEGER, new int(*stmt->get_value<int>()));
+            return Object(DataType::INTEGER, new int(stmt->get_value<int>()));
         case ast::NodeType::DOUBLE:
-            return Object(DataType::DOUBLE, new double(*stmt->get_value<double>()));
+            return Object(DataType::DOUBLE, new double(stmt->get_value<double>()));
         case ast::NodeType::BOOLEAN:
-            return Object(DataType::BOOLEAN, new bool(*stmt->get_value<bool>()));
+            return Object(DataType::BOOLEAN, new bool(stmt->get_value<bool>()));
         case ast::NodeType::STRING:
-            return Object(DataType::STRING, new std::string(*stmt->get_value<std::string>()));
+            return Object(DataType::STRING, new std::string(stmt->get_value<std::string>()));
         case ast::NodeType::VARIABLE:
-            return scope.get_var(*stmt->get_value<std::string>());
+            return scope.get_var(stmt->get_value<std::string>());
         case ast::NodeType::EXPRESSION:
             return interpret(stmt->get_child(0), scope);
 
@@ -200,7 +200,7 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
         */
         case ast::NodeType::VARIABLE_ASSIGNMENT:
             {
-                auto name = *stmt->get_value<std::string>();
+                auto name = stmt->get_value<std::string>();
 
                 if (!scope.has_var(name))
                     scope.add_var(name, interpret(stmt->get_child(0), scope));

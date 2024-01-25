@@ -273,38 +273,38 @@ Node* Parser::parse_factor()
     // DOUBLE
     else if (_currentToken.type == TokenType::DOUBLE)
     {
-        double value;
+        any value;
 
         try {
-            value = std::stod(_currentToken.value);
+            value.set_value<double>(std::stod(_currentToken.value));
         } catch (std::exception& e) {
             Diagnostics::log_error("Could not cast string to double.");
         }   
 
-        result = new Node(NodeType::DOUBLE, new double(value), _currentToken.lineNumber);
+        result = new Node(NodeType::DOUBLE, value, _currentToken.lineNumber);
     }
     // INTEGER
     else if (_currentToken.type == TokenType::INTEGER)
     {
-        int value;
+        any value;
 
         try {
-            value = std::stoi(_currentToken.value);
+            value.set_value<int>(std::stoi(_currentToken.value));
         } catch (std::exception& e) {
             Diagnostics::log_error("Could not cast string to integer.");
         }   
 
-        result = new Node(NodeType::INTEGER, new int(value), _currentToken.lineNumber);
+        result = new Node(NodeType::INTEGER, value, _currentToken.lineNumber);
     }
     // STRING
     else if (_currentToken.type == TokenType::STRING)
     {
-        result = new Node(NodeType::STRING, new std::string(_currentToken.value), _currentToken.lineNumber);
+        result = new Node(NodeType::STRING, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
     }
     // VARIABLE
     else if (_currentToken.type == TokenType::WORD)
     {
-        result = new Node(NodeType::VARIABLE, new std::string(_currentToken.value), _currentToken.lineNumber);
+        result = new Node(NodeType::VARIABLE, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
     }
     // NEGATE
     else if (_currentToken.type == TokenType::SUB)
@@ -315,7 +315,7 @@ Node* Parser::parse_factor()
     // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
     {
-        result = new Node(NodeType::BOOLEAN, new bool(_currentToken.value == "true" ? true : false), _currentToken.lineNumber);
+        result = new Node(NodeType::BOOLEAN, any::create<bool>(_currentToken.value == "true" ? true : false), _currentToken.lineNumber);
     }
     // ERROR
     else
@@ -383,6 +383,95 @@ Node* Parser::parse_else()
     return _else;
 }
 
+Node* Parser::parse_function_call()
+{
+    any functionName;
+    functionName.set_value<std::string>(_currentToken.value);
+    auto* fc = new Node(NodeType::FUNCTION_CALL, functionName, _currentToken.lineNumber);
+
+    move_next_non_wspace();
+    move_next_non_wspace();
+
+    if (_currentToken.type != TokenType::CLOSE_PARAN)
+    {
+        while (_currentToken.type != TokenType::CLOSE_PARAN && _currentToken.type != TokenType::END_OF_FILE)
+        {
+            auto* expression = parse_expression();
+
+            if (expression != nullptr)
+                fc->add_child(expression);
+
+            if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
+            {
+                move_next_non_wspace();
+                continue;
+            }
+
+            break;
+        }
+
+        if (_currentToken.type == TokenType::COMMA)
+            Diagnostics::log_error("Function call should not be ended with a comma.");
+
+        if (_currentToken.type != TokenType::CLOSE_PARAN)
+            Diagnostics::log_error("Missing a closed parenthesis ).");
+    }
+
+    return fc;
+}
+
+Node* Parser::parse_function()
+{
+    move_next_non_wspace();
+
+    if (_currentToken.type != TokenType::WORD)
+        Diagnostics::log_error("Function definition is lacking a name.");
+
+    auto func = new Node(NodeType::FUNCTION, any::create<FunctionData>(FunctionData{ _currentToken.value }), _currentToken.lineNumber);
+    auto funcInfo = func->get_value_as_pointer<FunctionData>();
+    
+    move_next_non_wspace();
+
+    if (_currentToken.type != TokenType::OPEN_PARAN)
+        Diagnostics::log_error("Function definition is missing an open parenthesis (.");
+
+    move_next_non_wspace();
+
+    if (_currentToken.type != TokenType::CLOSE_PARAN) 
+    {
+        // parse parameters
+        while (_currentToken.type != TokenType::CLOSE_PARAN && _currentToken.type != TokenType::END_OF_FILE)
+        {
+            if (_currentToken.type != TokenType::WORD)
+                Diagnostics::log_error("Incorrect parameter in function definition.");
+
+            funcInfo->paramNames.push_back(_currentToken.value);
+
+            move_next_non_wspace();
+
+            if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
+            {
+                move_next_non_wspace();
+                continue;
+            }
+
+            break;
+        }
+
+        if (_currentToken.type != TokenType::CLOSE_PARAN)
+            Diagnostics::log_error("Function definition missing a closing parenthesis ).");
+    }
+
+    move_next_non_wspace_pass_eols();
+
+    if (_currentToken.type != TokenType::OPEN_BRACKET)
+        Diagnostics::log_error("Function definition missing its body {.");
+
+    func->add_child(parse_block());
+
+    return func;
+}
+
 /**
  * Meat and potatos of parsing below
 */
@@ -405,7 +494,7 @@ Node* Parser::parse_next_statement()
     // VARIABLE ASSIGNMENT
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
     {
-        auto va = new Node(NodeType::VARIABLE_ASSIGNMENT, new std::string(_currentToken.value), _currentToken.lineNumber);
+        auto va = new Node(NodeType::VARIABLE_ASSIGNMENT, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
 
         move_next_non_wspace();
         move_next_non_wspace();
@@ -425,60 +514,14 @@ Node* Parser::parse_next_statement()
         move_next_non_wspace();
 
         if (!is_end_of_statement())
-            Diagnostics::log_error("Incorrect function call " + *fc->get_value<std::string>() + ".");
+            Diagnostics::log_error("Incorrect function call " + fc->get_value<std::string>() + ".");
 
         return fc;
     }
     // FUNCITON
     else if (_currentToken.type == TokenType::FUNCTION)
     {
-        move_next_non_wspace();
-
-        if (_currentToken.type != TokenType::WORD)
-            Diagnostics::log_error("Function definition is lacking a name.");
-
-        auto func = new Node(NodeType::FUNCTION, new FunctionData{ _currentToken.value }, _currentToken.lineNumber);
-        auto funcInfo = func->get_value<FunctionData>();
-        
-        move_next_non_wspace();
-
-        if (_currentToken.type != TokenType::OPEN_PARAN)
-            Diagnostics::log_error("Function definition is missing an open parenthesis (.");
-
-        move_next_non_wspace();
-
-        if (_currentToken.type != TokenType::CLOSE_PARAN) 
-        {
-            while (_currentToken.type != TokenType::CLOSE_PARAN && _currentToken.type != TokenType::END_OF_FILE)
-            {
-                if (_currentToken.type != TokenType::WORD)
-                    Diagnostics::log_error("Incorrect parameter in function definition.");
-
-                funcInfo->paramNames.push_back(_currentToken.value);
-
-                move_next_non_wspace();
-
-                if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
-                {
-                    move_next_non_wspace();
-                    continue;
-                }
-
-                break;
-            }
-
-            if (_currentToken.type != TokenType::CLOSE_PARAN)
-                Diagnostics::log_error("Function definition missing a closing parenthesis ).");
-        }
-
-        move_next_non_wspace_pass_eols();
-
-        if (_currentToken.type != TokenType::OPEN_BRACKET)
-            Diagnostics::log_error("Function definition missing its body {.");
-
-        func->add_child(parse_block());
-
-        return func;
+        return parse_function();
     }
     // RETURN
     else if (_currentToken.type == TokenType::RETURN)
@@ -521,17 +564,19 @@ Node* Parser::parse_next_statement()
     // INCREMENT
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::INCREMENT)
     {
-        std::string variableName = _currentToken.value;
+        std::string vn = _currentToken.value;
         move_next_non_wspace();
         move_next_non_wspace();
 
         if (!is_end_of_statement())
             Diagnostics::log_error("Variable increment was not properly formatted.");
 
-        return new Node(NodeType::VARIABLE_ASSIGNMENT, new std::string(variableName), _currentToken.lineNumber, {
-            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, { 
+        any variableName = any::create<std::string>(vn);
+
+        return new Node(NodeType::VARIABLE_ASSIGNMENT, variableName, _currentToken.lineNumber, {
+            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, {
                 new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, { 
-                    new Node(NodeType::VARIABLE, new std::string(variableName), _currentToken.lineNumber), new Node(NodeType::INTEGER, new int(1), _currentToken.lineNumber) 
+                    new Node(NodeType::VARIABLE, variableName, _currentToken.lineNumber), new Node(NodeType::INTEGER, any::create<int>(1), _currentToken.lineNumber) 
                 }) 
             }) 
         });
@@ -539,17 +584,19 @@ Node* Parser::parse_next_statement()
     // DECREMENT
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT)
     {
-        std::string variableName = _currentToken.value;
+        std::string vn = _currentToken.value;
         move_next_non_wspace();
         move_next_non_wspace();
 
         if (!is_end_of_statement())
             Diagnostics::log_error("Variable decrement was not properly formatted.");
 
-        return new Node(NodeType::VARIABLE_ASSIGNMENT, new std::string(variableName), _currentToken.lineNumber, {
+        any variableName = any::create<std::string>(vn);
+
+        return new Node(NodeType::VARIABLE_ASSIGNMENT, variableName, _currentToken.lineNumber, {
             new Node(NodeType::EXPRESSION, _currentToken.lineNumber, { 
                 new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, { 
-                    new Node(NodeType::VARIABLE, new std::string(variableName), _currentToken.lineNumber), new Node(NodeType::INTEGER, new int(1), _currentToken.lineNumber) 
+                    new Node(NodeType::VARIABLE, variableName, _currentToken.lineNumber), new Node(NodeType::INTEGER, any::create<int>(1), _currentToken.lineNumber) 
                 })
             }) 
         });
@@ -568,41 +615,6 @@ Node* Parser::parse_next_statement()
     Diagnostics::log_error("Could not read statement.");
 
     return nullptr;
-}
-
-Node* Parser::parse_function_call()
-{
-    auto* fc = new Node(NodeType::FUNCTION_CALL, new std::string(_currentToken.value), _currentToken.lineNumber);
-
-    move_next_non_wspace();
-    move_next_non_wspace();
-
-    if (_currentToken.type != TokenType::CLOSE_PARAN)
-    {
-        while (_currentToken.type != TokenType::CLOSE_PARAN && _currentToken.type != TokenType::END_OF_FILE)
-        {
-            auto* expression = parse_expression();
-
-            if (expression != nullptr)
-                fc->add_child(expression);
-
-            if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
-            {
-                move_next_non_wspace();
-                continue;
-            }
-
-            break;
-        }
-
-        if (_currentToken.type == TokenType::COMMA)
-            Diagnostics::log_error("Function call should not be ended with a comma.");
-
-        if (_currentToken.type != TokenType::CLOSE_PARAN)
-            Diagnostics::log_error("Missing a closed parenthesis ).");
-    }
-
-    return fc;
 }
 
 /// @brief Must start on an OPEN_BRACKET to start an inner block and nothing to start a file block

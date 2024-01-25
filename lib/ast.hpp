@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
+#include "any.hpp"
 
 namespace ast
 {
@@ -57,7 +58,7 @@ namespace ast
     {
         NodeType _type;
         std::vector<Node*> _children;
-        void* _value;
+        any _value;
         int _lineIndex;
 
         public:
@@ -65,14 +66,17 @@ namespace ast
             Node* operator=(const Node* other);
             Node(NodeType type, int lineIndex);
             Node(NodeType type, int lineIndex, std::vector<Node*> children);
-            Node(NodeType type, void* value, int lineIndex);
-            Node(NodeType type, void* value, int lineIndex, std::vector<Node*> children);
+            Node(NodeType type, any value, int lineIndex);
+            Node(NodeType type, any value, int lineIndex, std::vector<Node*> children);
             ~Node();
 
             void clean_up();
 
             template<typename T>
-            T* get_value() { return static_cast<T*>(_value); }
+            T get_value() { return _value.get_value<T>(); }
+
+            template<typename T>
+            T* get_value_as_pointer() { return _value.get_value_as_pointer<T>(); }
 
             std::vector<Node*>& get_children();
             Node* get_child(size_t index);

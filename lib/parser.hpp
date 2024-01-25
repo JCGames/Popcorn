@@ -42,6 +42,7 @@ namespace prs
 
         ast::Node* parse_next_statement();
         ast::Node* parse_function_call();
+        ast::Node* parse_function();
         ast::Node* parse_block();
 
         public:

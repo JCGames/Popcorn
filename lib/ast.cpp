@@ -83,26 +83,24 @@ Node* Node::operator=(const Node* other)
 Node::Node(NodeType type, int lineIndex)
 {
     _type = type;
-    _value = nullptr;
     _lineIndex = lineIndex;
 }
 
 Node::Node(NodeType type, int lineIndex, std::vector<Node*> children)
 {
     _type = type;
-    _value = nullptr;
     _lineIndex = lineIndex;
     _children = children;
 }
 
-Node::Node(NodeType type, void* value, int lineIndex)
+Node::Node(NodeType type, any value, int lineIndex)
 {
     _type = type;
     _value = value;
     _lineIndex = lineIndex;
 }
 
-Node::Node(NodeType type, void* value, int lineIndex, std::vector<Node*> children)
+Node::Node(NodeType type, any value, int lineIndex, std::vector<Node*> children)
 {
     _type = type;
     _value = value;
@@ -117,33 +115,6 @@ Node::~Node()
 
 void Node::clean_up()
 {
-    if (_value == nullptr) return;
-
-    switch (_type)
-    {
-        case NodeType::DOUBLE:
-            delete static_cast<double*>(_value);
-            break;
-        case NodeType::INTEGER:
-            delete static_cast<int*>(_value);
-            break;
-        case NodeType::BOOLEAN:
-            delete static_cast<bool*>(_value);
-            break;
-        case NodeType::STRING:
-        case NodeType::VARIABLE_ASSIGNMENT:
-        case NodeType::VARIABLE:
-        case NodeType::FUNCTION_CALL:
-            delete static_cast<std::string*>(_value);
-            break;
-        case NodeType::FUNCTION:
-            delete static_cast<FunctionData*>(_value);
-            break;
-        default:
-            Diagnostics::log_error("Node of type [" + get_statement_type_name(_type) + "] could not be deleted!");
-            break;
-    }
-
     for (auto stmt : _children)
     {
         if (stmt != nullptr)
@@ -231,19 +202,19 @@ void AST::print_statement(Node* stmt, std::string indent)
             print_statement(stmt->get_child(1), indent + '\t');
             break;
         case NodeType::DOUBLE:
-            printf("%s%f\n", indent.c_str(), *stmt->get_value<double>());
+            printf("%s%f\n", indent.c_str(), stmt->get_value<double>());
             break;
         case NodeType::INTEGER:
-            printf("%s%i\n", indent.c_str(), *stmt->get_value<int>());
+            printf("%s%i\n", indent.c_str(), stmt->get_value<int>());
             break;
         case NodeType::STRING:
-            printf("%s%s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            printf("%s%s\n", indent.c_str(), (stmt->get_value<std::string>()).c_str());
             break;
         case NodeType::EXPRESSION:
             print_statement(stmt->get_child(0), indent + '\t');
             break;
         case NodeType::VARIABLE_ASSIGNMENT:
-            printf("%sNAME: |%s|\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            printf("%sNAME: |%s|\n", indent.c_str(), (stmt->get_value<std::string>()).c_str());
             print_statement(stmt->get_child(0), indent + '\t');
             break;
         case NodeType::BLOCK:
@@ -251,10 +222,10 @@ void AST::print_statement(Node* stmt, std::string indent)
                 print_statement(statement, indent + '\t');
             break;
         case NodeType::VARIABLE:
-            printf("%sNAME: %s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            printf("%sNAME: %s\n", indent.c_str(), (stmt->get_value<std::string>()).c_str());
             break;
         case NodeType::FUNCTION_CALL:
-            printf("%sFunction Name: %s\n", indent.c_str(), (*stmt->get_value<std::string>()).c_str());
+            printf("%sFunction Name: %s\n", indent.c_str(), (stmt->get_value<std::string>()).c_str());
             printf("%s---PARAMETER LIST:\n", indent.c_str());
             for (auto e : stmt->get_children())
                 print_statement(e, indent + '\t');
@@ -293,7 +264,7 @@ void AST::print_statement(Node* stmt, std::string indent)
             break;
         case NodeType::FUNCTION:
             {
-                FunctionData funcInfo = *stmt->get_value<FunctionData>();
+                FunctionData funcInfo = stmt->get_value<FunctionData>();
 
                 printf("%sNAME: %s\n", indent.c_str(), funcInfo.functionName.c_str());
                 printf("%sPARAMETERS: [", indent.c_str());

@@ -27,10 +27,9 @@ int main(int argc, char** args)
     for (int i = 0; i < argc; ++i)
     {
         if (strcmp(args[i], "-d") == 0)
-        {
             DEBUG = true;
-            DO_ANY_DEBUG = true;
-        }
+        else if (strcmp(args[i], "-m") == 0)
+            any::DO_ANY_DEBUG = true;
     }
 
     if (argc > 1)
