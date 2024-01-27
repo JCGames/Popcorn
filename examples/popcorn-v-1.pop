@@ -1,0 +1,53 @@
+printl()
+printl()
+
+// returns the absolute value of x
+func abs(x)
+{
+	if x < 0
+	{
+		return x * -1
+	}
+	
+	return x
+}
+
+print("Absolute value of -10: ")
+printl(abs(-10))
+print("Absolute value of 10: ")
+printl(abs(10))
+
+printl()
+
+// example of a break
+i = 0
+
+while i < 10
+{
+	if i == 5
+	{
+		break
+	}
+
+	i++
+}
+
+printl("The final value of i is: " + i)
+
+printl()
+printl("Even numbers:")
+
+// just for fun
+i = 0
+
+while i < 10
+{
+	if i % 2 == 0
+	{
+		printl(":" + i)
+	}
+	i++
+}
+
+printl()
+printl()

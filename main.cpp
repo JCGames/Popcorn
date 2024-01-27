@@ -12,6 +12,7 @@ using namespace std;
 using namespace popcorn::diagnostics;
 
 static bool DEBUG = false;
+const char* VERSION = "1.0";
 
 string get_file_ext(const string& s) 
 {
@@ -26,8 +27,15 @@ int main(int argc, char** args)
 {
     for (int i = 0; i < argc; ++i)
     {
-        if (strcmp(args[i], "-d") == 0)
+        if (strcmp(args[i], "-d") == 0 || strcmp(args[i], "--debug") == 0)
+        {
             DEBUG = true;
+        }
+        else if (strcmp(args[i], "-v") == 0 || strcmp(args[i], "--version") == 0)
+        {
+            printf("Popcorn Version: %s\n", VERSION);
+            return 0;
+        }
     }
 
     if (argc > 1)
