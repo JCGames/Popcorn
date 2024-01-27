@@ -8,17 +8,17 @@
 struct FunctionPointer
 {
     std::string functionName;
-    ast::Node* function;
+    popcorn::parser::Node* function;
 
-    FunctionPointer(std::string functionName, ast::Node* function);
+    FunctionPointer(std::string functionName, popcorn::parser::Node* function);
 };
 
 struct VariablePointer
 {
     std::string variableName;
-    obj::Object object;
+    popcorn::runner::Object object;
 
-    VariablePointer(std::string variableName, obj::Object object);
+    VariablePointer(std::string variableName, popcorn::runner::Object object);
 };
 
 struct Scope
@@ -37,12 +37,12 @@ struct Scope
     Scope();
     Scope(Scope* parent);
 
-    void add_func(std::string name, ast::Node* function);
-    ast::Node* get_func(std::string name);
+    void add_func(std::string name, popcorn::parser::Node* function);
+    popcorn::parser::Node* get_func(std::string name);
 
-    void add_var(std::string name, obj::Object object);
+    void add_var(std::string name, popcorn::runner::Object object);
     bool has_var(std::string name);
-    obj::Object& get_var(std::string name);
+    popcorn::runner::Object& get_var(std::string name);
 };
 
 #endif // SCOPE

@@ -2,7 +2,8 @@
 #include "lexer.hpp"
 #include "diagnostics.hpp"
 
-using namespace lex;
+using namespace popcorn::lexer;
+using namespace popcorn::diagnostics;
 
 Lexer::Lexer(const std::string& fileName)
 {

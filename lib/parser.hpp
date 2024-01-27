@@ -6,50 +6,48 @@
 #include "lexer.hpp"
 #include "ast.hpp"
 
-namespace prs
+namespace popcorn::parser
 {
     #define ERR_TOKEN { TokenType::ERR, "ERROR", -1 }
 
     class Parser
     {
-        ast::AST* _ast;
+        popcorn::parser::AST* _ast;
 
-        std::vector<lex::Token> _tokens;
+        std::vector<popcorn::lexer::Token> _tokens;
         int _index;
-        lex::Token _currentToken;
+        popcorn::lexer::Token _currentToken;
         bool _isInChildBlock;
 
-        
-
         void move_next();
-        lex::Token peek_next();
-        lex::Token peek_next_non_wspace();
+        popcorn::lexer::Token peek_next();
+        popcorn::lexer::Token peek_next_non_wspace();
         void move_next_non_wspace();
         void move_next_non_wspace_pass_eols();
-        lex::Token peek_next_non_wspace_pass_eols();
+        popcorn::lexer::Token peek_next_non_wspace_pass_eols();
         bool is_end_of_statement();
 
-        ast::Node* parse_expression();
-        ast::Node* parse_condition();
-        ast::Node* parse_equality();
-        ast::Node* parse_addend();
-        ast::Node* parse_term();
-        ast::Node* parse_power();
-        ast::Node* parse_factor();
+        popcorn::parser::Node* parse_expression();
+        popcorn::parser::Node* parse_condition();
+        popcorn::parser::Node* parse_equality();
+        popcorn::parser::Node* parse_addend();
+        popcorn::parser::Node* parse_term();
+        popcorn::parser::Node* parse_power();
+        popcorn::parser::Node* parse_factor();
 
-        ast::Node* parse_if();
-        ast::Node* parse_else();
+        popcorn::parser::Node* parse_if();
+        popcorn::parser::Node* parse_else();
 
-        ast::Node* parse_next_statement();
-        ast::Node* parse_function_call();
-        ast::Node* parse_function();
-        ast::Node* parse_block();
+        popcorn::parser::Node* parse_next_statement();
+        popcorn::parser::Node* parse_function_call();
+        popcorn::parser::Node* parse_function();
+        popcorn::parser::Node* parse_block();
 
         public:
             Parser();
-            Parser(const std::vector<lex::Token>& tokens);
+            Parser(const std::vector<popcorn::lexer::Token>& tokens);
 
-            ast::AST* parse_ast();
+            popcorn::parser::AST* parse_ast();
     };
 }
 

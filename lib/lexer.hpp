@@ -5,7 +5,7 @@
 #include <vector>
 #include <fstream>
 
-namespace lex
+namespace popcorn::lexer
 {
     enum class TokenType 
     {

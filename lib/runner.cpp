@@ -1,10 +1,11 @@
 #include "runner.hpp"
 #include "diagnostics.hpp"
 
-using namespace run;
-using namespace obj;
+using namespace popcorn::runner;
+using namespace popcorn::diagnostics;
+using namespace popcorn::parser;
 
-obj::Object& Scope::get_var(std::string name)
+Object& Scope::get_var(std::string name)
 {
     for (auto& v : variables)
     {
@@ -24,23 +25,24 @@ Runner::Runner()
     Diagnostics::info = DiagnosticInfo(DiagnosticState::_RUNNER);
 }
 
-void Runner::create_function_lookup_table(ast::Node* block, Scope& scope)
+void Runner::create_function_lookup_table(Node* block, Scope& scope)
 {
-    for (auto stmt : block->get_children())
+    for (auto stmt : block->get_struct<Block_S>()->statements)
     {
         Diagnostics::info.lineNumber = stmt->get_line_index();
 
-        if (stmt->get_type() == ast::NodeType::FUNCTION)
+        if (stmt->get_type() == NodeType::FUNCTION)
         {
-            scope.add_func((stmt->get_value<ast::FunctionData>()).functionName, stmt);
+            scope.add_func(stmt->get_struct<Funciton_S>()->name, stmt);
         }
     }
 }
 
-Object Runner::call_function(ast::Node* funcCall, Scope& scope)
+Object Runner::call_function(Node* funcCall, Scope& scope)
 {
-    std::string functionName = funcCall->get_value<std::string>();
-    auto children = funcCall->get_children();
+    auto fc_struct = funcCall->get_struct<FunctionCall_S>();
+    std::string functionName = fc_struct->functionName;
+    auto children = fc_struct->paramValues;
 
     /**
      * LANGUAGE DEFINED FUNCTIONS
@@ -48,7 +50,7 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
     if (functionName == "printl")
     {
         if (children.size() == 1)
-            printf("%s\n", interpret(children[0]->get_child(0), scope).cast_to_string().get_str().c_str());
+            printf("%s\n", interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_string().get_str().c_str());
         else if (children.size() == 0)
             printf("\n");
         else
@@ -57,7 +59,7 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
     else if (functionName == "print")
     {
         if (children.size() == 1)
-            printf("%s", interpret(children[0]->get_child(0), scope).cast_to_string().get_str().c_str());
+            printf("%s", interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_string().get_str().c_str());
         else
             Diagnostics::log_error(functionName + " takes one argument.");
     }
@@ -77,57 +79,57 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
     else if (functionName == "int")
     {
         if (children.size() == 1)
-            return interpret(children[0]->get_child(0), scope).cast_to_int();
+            return interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_int();
         else
             Diagnostics::log_error(functionName + " takes one argument.");
     }
     else if (functionName == "double")
     {
         if (children.size() == 1)
-            return interpret(children[0]->get_child(0), scope).cast_to_double();
+            return interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_double();
         else
             Diagnostics::log_error(functionName + " takes one argument.");
     }
     else if (functionName == "bool")
     {
         if (children.size() == 1)
-            return interpret(children[0]->get_child(0), scope).cast_to_bool();
+            return interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_bool();
         else
             Diagnostics::log_error(functionName + " takes one argument.");
     }
     else if (functionName == "string")
     {
         if (children.size() == 1)
-            return interpret(children[0]->get_child(0), scope).cast_to_string();
+            return interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_string();
         else
             Diagnostics::log_error(functionName + " takes one argument.");
     }
     /**
      * CUSTOM FUNCTIONS
     */
-    else if (ast::Node* func = scope.get_func(functionName))
+    else if (Node* func = scope.get_func(functionName))
     {
-        if (func->get_type() != ast::NodeType::FUNCTION)
+        if (func->get_type() != NodeType::FUNCTION)
             throw std::runtime_error("Not a function!");
 
-        auto funcInfo = func->get_value<ast::FunctionData>();
+        auto func_struct = func->get_struct<Funciton_S>();
 
         // declare a scope and set up the scope's parameters
         Scope functionScope(&scope);
         functionScope.canNestFunctions = true;
 
         // sets up function's local passed in variables
-        if (funcInfo.paramNames.size() != children.size())
+        if (func_struct->paramList.size() != children.size())
             Diagnostics::log_error("Function call " + functionName + " did not match the functions parameter list.");
 
-        for (size_t i = 0; i < funcInfo.paramNames.size(); ++i)
-            functionScope.add_var(funcInfo.paramNames[i], interpret(children[i]->get_child(0), scope));
+        for (size_t i = 0; i < func_struct->paramList.size(); ++i)
+            functionScope.add_var(func_struct->paramList[i], interpret(children[i]->get_struct<Expression_S>()->root, scope));
 
         // allows for nesting functions within functions
-        create_function_lookup_table(func->get_child(0), functionScope);
+        create_function_lookup_table(func_struct->body, functionScope);
 
         // runs the function
-        run_block(func->get_child(0), functionScope);
+        run_block(func_struct->body, functionScope);
     }
     /**
      * FUNCTION DOES NOT EXIST
@@ -140,82 +142,94 @@ Object Runner::call_function(ast::Node* funcCall, Scope& scope)
     return Object();
 }
 
-Object Runner::interpret(ast::Node* stmt, Scope& scope)
+Object Runner::interpret(Node* node, Scope& scope)
 {
-    Diagnostics::info.lineNumber = stmt->get_line_index();
+    Diagnostics::info.lineNumber = node->get_line_index();
 
-    switch (stmt->get_type())
+    switch (node->get_type())
     {
         /**
          * Objects
         */
-        case ast::NodeType::INTEGER:
-            return Object(DataType::INTEGER, new int(stmt->get_value<int>()));
-        case ast::NodeType::DOUBLE:
-            return Object(DataType::DOUBLE, new double(stmt->get_value<double>()));
-        case ast::NodeType::BOOLEAN:
-            return Object(DataType::BOOLEAN, new bool(stmt->get_value<bool>()));
-        case ast::NodeType::STRING:
-            return Object(DataType::STRING, new std::string(stmt->get_value<std::string>()));
-        case ast::NodeType::VARIABLE:
-            return scope.get_var(stmt->get_value<std::string>());
-        case ast::NodeType::EXPRESSION:
-            return interpret(stmt->get_child(0), scope);
+        case NodeType::INTEGER:
+            return Object(DataType::INTEGER, new int(*node->get_struct<int>()));
+        case NodeType::DOUBLE:
+            return Object(DataType::DOUBLE, new double(*node->get_struct<double>()));
+        case NodeType::BOOLEAN:
+            return Object(DataType::BOOLEAN, new bool(*node->get_struct<bool>()));
+        case NodeType::STRING:
+            return Object(DataType::STRING, new std::string(*node->get_struct<std::string>()));
+        case NodeType::VARIABLE:
+            return scope.get_var(*node->get_struct<std::string>());
+        case NodeType::EXPRESSION:
+            return interpret(node->get_struct<Expression_S>()->root, scope);
 
         /**
          * Operators
         */
        // Binary operators
-        case ast::NodeType::ADD_OPERATOR:
-            return interpret(stmt->get_child(0), scope).add_to(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::SUB_OPERATOR:
-            return interpret(stmt->get_child(0), scope).subtract_from(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::MUL_OPERATOR:
-            return interpret(stmt->get_child(0), scope).multiplied_by(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::DIV_OPERATOR:
-            return interpret(stmt->get_child(0), scope).divided_by(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::MODULUS_OPERATOR:
-            return interpret(stmt->get_child(0), scope).modulus_by(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::EQUALS_OPERATOR:
-            return interpret(stmt->get_child(0), scope).equals(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::NOT_EQUALS_OPERATOR:
-            return interpret(stmt->get_child(0), scope).not_equal_to(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::GREATER_THAN_OPERATOR:
-            return interpret(stmt->get_child(0), scope).greater_than(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::LESS_THAN_OPERATOR:
-            return interpret(stmt->get_child(0), scope).less_than(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::GREATER_THAN_EQUALS_OPERATOR:
-            return interpret(stmt->get_child(0), scope).greater_than_or_equal_to(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::LESS_THAN_EQUALS_OPERATOR:
-            return interpret(stmt->get_child(0), scope).less_than_or_equal_to(interpret(stmt->get_child(1), scope));
-        case ast::NodeType::POWER_OPERATOR:
-            return interpret(stmt->get_child(0), scope).power(interpret(stmt->get_child(1), scope));
+        case NodeType::ADD_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .add_to(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::SUB_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .subtract_from(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::MUL_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .multiplied_by(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::DIV_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .divided_by(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::MODULUS_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .modulus_by(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::EQUALS_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .equals(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::NOT_EQUALS_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .not_equal_to(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::GREATER_THAN_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .greater_than(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::LESS_THAN_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .less_than(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::GREATER_THAN_EQUALS_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .greater_than_or_equal_to(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::LESS_THAN_EQUALS_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .less_than_or_equal_to(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
+        case NodeType::POWER_OPERATOR:
+            return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
+                .power(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
         
         // Unary operators
-        case ast::NodeType::NEGATE:
-            return interpret(stmt->get_child(0), scope).negate();
+        case NodeType::NEGATE:
+            return interpret(node->get_struct<UnaryOperator_S>()->child, scope).negate();
 
         /**
          * Operations
         */
-        case ast::NodeType::VARIABLE_ASSIGNMENT:
+        case NodeType::VARIABLE_ASSIGNMENT:
             {
-                auto name = stmt->get_value<std::string>();
+                auto* va_struct = node->get_struct<VariableAssignment_S>();
 
-                if (!scope.has_var(name))
-                    scope.add_var(name, interpret(stmt->get_child(0), scope));
+                if (!scope.has_var(va_struct->variableName))
+                    scope.add_var(va_struct->variableName, interpret(va_struct->expression, scope));
                 else
-                    scope.get_var(name) = interpret(stmt->get_child(0), scope);
+                    scope.get_var(va_struct->variableName) = interpret(va_struct->expression, scope);
             }
             break;
 
-        case ast::NodeType::FUNCTION_CALL:
-            return call_function(stmt, scope);
+        case NodeType::FUNCTION_CALL:
+            return call_function(node, scope);
 
-        case ast::NodeType::WHILE:
+        case NodeType::WHILE:
             {
-                auto condition = stmt->get_child(0)->get_child(0);
-                Object conditionResult = interpret(condition, scope);
+                auto while_struct = node->get_struct<While_S>();
+                Object conditionResult = interpret(while_struct->condition, scope);
 
                 while (true)
                 {
@@ -227,7 +241,7 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
                         break;
 
                     Scope whileScope(&scope);
-                    Object stmtValue = run_block(stmt->get_child(1), whileScope);
+                    Object stmtValue = run_block(while_struct->body, whileScope);
 
                     if (whileScope.returnFlag)
                     {
@@ -240,14 +254,15 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
                     }
 
                     // checks to see if the while loop should continue
-                    conditionResult = interpret(condition, scope);
+                    conditionResult = interpret(while_struct->condition, scope);
                 }
             }
             break;
 
-        case ast::NodeType::IF:
+        case NodeType::IF:
             {
-                Object conditionResult = interpret(stmt->get_child(0)->get_child(0), scope);
+                auto if_struct = node->get_struct<If_S>();
+                Object conditionResult = interpret(if_struct->condition, scope);
 
                 if (conditionResult.get_type() != DataType::BOOLEAN)
                     Diagnostics::log_warning("If statement did not recieve a boolean value.");
@@ -256,7 +271,7 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
 
                 if (conditionResult.get_type() == DataType::BOOLEAN && conditionResult.get_bool()) 
                 {
-                    Object stmtValue = run_block(stmt->get_child(1), ifScope);
+                    Object stmtValue = run_block(if_struct->body, ifScope);
                     
                     if (ifScope.returnFlag)
                     {
@@ -264,17 +279,17 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
                         return stmtValue;
                     }
                 }
-                else if (stmt->get_child(2) != nullptr)
+                else if (if_struct->branchingElseOrIf != nullptr)
                 {
-                    return interpret(stmt->get_child(2), scope);
+                    return interpret(if_struct->branchingElseOrIf, scope);
                 }
             }
             break;
 
-        case ast::NodeType::ELSE:
+        case NodeType::ELSE:
             {
                 Scope elseScope(&scope);
-                Object stmtValue = run_block(stmt->get_child(0), elseScope);
+                Object stmtValue = run_block(node->get_struct<While_S>()->body, elseScope);
 
                 if (elseScope.returnFlag)
                 {
@@ -284,31 +299,31 @@ Object Runner::interpret(ast::Node* stmt, Scope& scope)
             }
             break;
 
-        case ast::NodeType::RETURN:
+        case NodeType::RETURN:
             scope.returnFlag = true;
-            return interpret(stmt->get_child(0)->get_child(0), scope);
+            return interpret(node->get_struct<Return_S>()->expression, scope);
             break;
 
-        case ast::NodeType::BREAK:
+        case NodeType::BREAK:
             scope.breakFlag = true;
             break;
 
-        case ast::NodeType::FUNCTION:
+        case NodeType::FUNCTION:
             break;
         
         default:
-            Diagnostics::log_warning("Could not interpret statement " + ast::get_statement_type_name(stmt->get_type()) + ".");
+            Diagnostics::log_warning("Could not interpret statement " + get_node_type_name(node->get_type()) + ".");
             break;
     }
 
     return Object();
 }
 
-Object Runner::run_block(ast::Node* block, Scope& scope)
+Object Runner::run_block(Node* block, Scope& scope)
 {
-    for (const auto& s : block->get_children())
+    for (const auto& s : block->get_struct<Block_S>()->statements)
     {
-        if (!scope.canNestFunctions && s->get_type() == ast::NodeType::FUNCTION)
+        if (!scope.canNestFunctions && s->get_type() == NodeType::FUNCTION)
             Diagnostics::log_error("Nested functions can only be nested in other functions.");
 
         Object stmtValue = interpret(s, scope);
@@ -322,10 +337,10 @@ Object Runner::run_block(ast::Node* block, Scope& scope)
     return Object();
 }
 
-void Runner::run(ast::AST& ast)
+void Runner::run(AST& ast)
 {
     create_function_lookup_table(ast.root, _rootScope);
 
-    for (auto stat : ast.root->get_children())
+    for (auto stat : ast.root->get_struct<Block_S>()->statements)
         interpret(stat, _rootScope);
 }

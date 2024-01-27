@@ -1,7 +1,8 @@
 #include "object.hpp"
 #include "diagnostics.hpp"
 
-using namespace obj;
+using namespace popcorn::runner;
+using namespace popcorn::diagnostics;
 
 /**
  * Creates a null object.

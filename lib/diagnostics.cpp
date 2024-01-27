@@ -1,14 +1,15 @@
-#include "console.hpp"
 #include "diagnostics.hpp"
+
+#include "../includes/console.hpp"
+
+using namespace popcorn::diagnostics;
 
 DiagnosticInfo Diagnostics::info = DiagnosticInfo();
 
 void Diagnostics::log_error(std::string message)
 {
-    printf("\n");
-
     #ifdef _WIN32
-        Console::set_console_color(12);
+        helpers::Console::set_console_color(12);
     #elif __linux__
         printf("\x1B[31m");
     #endif
@@ -27,7 +28,7 @@ void Diagnostics::log_error(std::string message)
     }
 
     #ifdef _WIN32
-        Console::set_console_to_default();
+        helpers::Console::set_console_to_default();
     #elif __linux__
         printf("\033[0m");
     #endif
@@ -39,10 +40,8 @@ void Diagnostics::log_error(std::string message)
 
 void Diagnostics::log_warning(std::string message)
 {
-    printf("\n");
-
     #ifdef _WIN32
-        Console::set_console_color(14);
+        helpers::Console::set_console_color(14);
     #elif __linux__
         printf("\x1B[31m");
     #endif
@@ -61,7 +60,7 @@ void Diagnostics::log_warning(std::string message)
     }    
 
     #ifdef _WIN32
-        Console::set_console_to_default();
+        helpers::Console::set_console_to_default();
     #elif __linux__
         printf("\033[0m");
     #endif
@@ -71,8 +70,6 @@ void Diagnostics::log_warning(std::string message)
 
 void Diagnostics::log_information(std::string message)
 {
-    printf("\n");
-
     switch (info.state)
     {
         case DiagnosticState::_LEXER:

@@ -1,12 +1,12 @@
 #include <stdexcept>
 #include <string>
-#include "console.hpp"
+#include "../includes/console.hpp"
 #include "parser.hpp"
 #include "diagnostics.hpp"
 
-using namespace prs;
-using namespace ast;
-using namespace lex;
+using namespace popcorn::parser;
+using namespace popcorn::lexer;
+using namespace popcorn::diagnostics;
 
 Parser::Parser()
 {
@@ -108,7 +108,7 @@ bool Parser::is_end_of_statement()
 /// @brief Ends on the next non-whitespace token.
 Node* Parser::parse_expression()
 {
-    return new Node(NodeType::EXPRESSION, _currentToken.lineNumber, { parse_condition() });
+    return new Node(NodeType::EXPRESSION, _currentToken.lineNumber, new Expression_S{ parse_condition() });
 }
 
 Node* Parser::parse_condition()
@@ -121,13 +121,13 @@ Node* Parser::parse_condition()
         {
             move_next_non_wspace();
             Node* right = parse_equality();
-            left = new Node(NodeType::AND_CONDITION, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::AND_CONDITION, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::OR_CONDITION)
         {
             move_next_non_wspace();
             Node* right = parse_equality();
-            left = new Node(NodeType::OR_CONDITION, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::OR_CONDITION, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
     }
 
@@ -146,37 +146,37 @@ Node* Parser::parse_equality()
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::EQUALS_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::EQUALS_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::NOT_EQUALS)
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::NOT_EQUALS_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::NOT_EQUALS_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::GREATER_THAN)
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::GREATER_THAN_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::GREATER_THAN_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::LESS_THAN)
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::LESS_THAN_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::LESS_THAN_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::GREATER_THAN_EQUALS)
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::GREATER_THAN_EQUALS_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::GREATER_THAN_EQUALS_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::LESS_THAN_EQUALS)
         {
             move_next_non_wspace();
             Node* right = parse_addend();
-            left = new Node(NodeType::LESS_THAN_EQUALS_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::LESS_THAN_EQUALS_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
     }
 
@@ -193,13 +193,13 @@ Node* Parser::parse_addend()
         {
             move_next_non_wspace();
             Node* right = parse_term();
-            left = new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::SUB)
         {
             move_next_non_wspace();
             Node* right = parse_term();
-            left = new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
     }
 
@@ -216,19 +216,19 @@ Node* Parser::parse_term()
         {
             move_next_non_wspace();
             Node* right = parse_power();
-            left = new Node(NodeType::MUL_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::MUL_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::DIV)
         {
             move_next_non_wspace();
             Node* right = parse_power();
-            left = new Node(NodeType::DIV_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::DIV_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
         else if (_currentToken.type == TokenType::MODULUS)
         {
             move_next_non_wspace();
             Node* right = parse_power();
-            left = new Node(NodeType::MODULUS_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::MODULUS_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
     }
 
@@ -245,7 +245,7 @@ Node* Parser::parse_power()
         {
             move_next_non_wspace();
             Node* right = parse_factor();
-            left = new Node(NodeType::POWER_OPERATOR, _currentToken.lineNumber, { left, right });
+            left = new Node(NodeType::POWER_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{ left, right });
         }
     }
 
@@ -273,49 +273,49 @@ Node* Parser::parse_factor()
     // DOUBLE
     else if (_currentToken.type == TokenType::DOUBLE)
     {
-        any value;
+        double value;
 
         try {
-            value.set_value<double>(std::stod(_currentToken.value));
+            value = std::stod(_currentToken.value);
         } catch (std::exception& e) {
             Diagnostics::log_error("Could not cast string to double.");
         }   
 
-        result = new Node(NodeType::DOUBLE, value, _currentToken.lineNumber);
+        result = new Node(NodeType::DOUBLE, _currentToken.lineNumber, new double(value));
     }
     // INTEGER
     else if (_currentToken.type == TokenType::INTEGER)
     {
-        any value;
+        int value;
 
         try {
-            value.set_value<int>(std::stoi(_currentToken.value));
+            value = std::stoi(_currentToken.value);
         } catch (std::exception& e) {
             Diagnostics::log_error("Could not cast string to integer.");
         }   
 
-        result = new Node(NodeType::INTEGER, value, _currentToken.lineNumber);
+        result = new Node(NodeType::INTEGER, _currentToken.lineNumber, new int(value));
     }
     // STRING
     else if (_currentToken.type == TokenType::STRING)
     {
-        result = new Node(NodeType::STRING, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
+        result = new Node(NodeType::STRING, _currentToken.lineNumber, new std::string(_currentToken.value));
     }
     // VARIABLE
     else if (_currentToken.type == TokenType::WORD)
     {
-        result = new Node(NodeType::VARIABLE, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
+        result = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
     }
     // NEGATE
     else if (_currentToken.type == TokenType::SUB)
     {
         move_next_non_wspace();
-        result = new Node(NodeType::NEGATE, _currentToken.lineNumber, { parse_expression() });
+        result = new Node(NodeType::NEGATE, _currentToken.lineNumber, new UnaryOperator_S{ parse_expression() });
     }
     // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
     {
-        result = new Node(NodeType::BOOLEAN, any::create<bool>(_currentToken.value == "true" ? true : false), _currentToken.lineNumber);
+        result = new Node(NodeType::BOOLEAN, _currentToken.lineNumber, new bool(_currentToken.value == "true" ? true : false));
     }
     // ERROR
     else
@@ -333,11 +333,11 @@ Node* Parser::parse_factor()
 
 Node* Parser::parse_if()
 {
-    auto _if = new Node(NodeType::IF, _currentToken.lineNumber);
+    auto _if = new Node(NodeType::IF, _currentToken.lineNumber, new If_S());
 
     move_next_non_wspace();
 
-    _if->add_child(parse_expression());
+    _if->get_struct<If_S>()->condition = parse_expression();
 
     if (is_end_of_statement() && _currentToken.type != TokenType::CLOSED_BRACKET)
         move_next_non_wspace_pass_eols();
@@ -345,7 +345,7 @@ Node* Parser::parse_if()
     if (_currentToken.type != TokenType::OPEN_BRACKET)
         Diagnostics::log_error("If statement did not have an open bracket.");
 
-    _if->add_child(parse_block());
+    _if->get_struct<If_S>()->body = parse_block();
 
     if (peek_next_non_wspace_pass_eols().type == TokenType::ELSE)
     {
@@ -355,11 +355,11 @@ Node* Parser::parse_if()
         {
             move_next_non_wspace();
 
-            _if->add_child(parse_if());
+            _if->get_struct<If_S>()->branchingElseOrIf = parse_if();
         }
         else
         {
-            _if->add_child(parse_else());
+            _if->get_struct<If_S>()->branchingElseOrIf = parse_else();
         }
     }
 
@@ -378,16 +378,15 @@ Node* Parser::parse_else()
     if (_currentToken.type != TokenType::OPEN_BRACKET)
         Diagnostics::log_error("Else statement did not have an open bracket.");
 
-    _else->add_child(parse_block());
+    _else->get_struct<Else_S>()->body = parse_block();
 
     return _else;
 }
 
 Node* Parser::parse_function_call()
 {
-    any functionName;
-    functionName.set_value<std::string>(_currentToken.value);
-    auto* fc = new Node(NodeType::FUNCTION_CALL, functionName, _currentToken.lineNumber);
+    auto* fc = new Node(NodeType::FUNCTION_CALL, _currentToken.lineNumber, new FunctionCall_S());
+    fc->get_struct<FunctionCall_S>()->functionName = _currentToken.value;
 
     move_next_non_wspace();
     move_next_non_wspace();
@@ -399,7 +398,7 @@ Node* Parser::parse_function_call()
             auto* expression = parse_expression();
 
             if (expression != nullptr)
-                fc->add_child(expression);
+                fc->get_struct<FunctionCall_S>()->paramValues.push_back(expression);
 
             if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSE_PARAN)
             {
@@ -427,8 +426,9 @@ Node* Parser::parse_function()
     if (_currentToken.type != TokenType::WORD)
         Diagnostics::log_error("Function definition is lacking a name.");
 
-    auto func = new Node(NodeType::FUNCTION, any::create<FunctionData>(FunctionData{ _currentToken.value }), _currentToken.lineNumber);
-    auto funcInfo = func->get_value_as_pointer<FunctionData>();
+    Node* func = new Node(NodeType::FUNCTION, _currentToken.lineNumber, new Funciton_S());
+    auto function_struct = func->get_struct<Funciton_S>();
+    function_struct->name = _currentToken.value;
     
     move_next_non_wspace();
 
@@ -445,7 +445,7 @@ Node* Parser::parse_function()
             if (_currentToken.type != TokenType::WORD)
                 Diagnostics::log_error("Incorrect parameter in function definition.");
 
-            funcInfo->paramNames.push_back(_currentToken.value);
+            function_struct->paramList.push_back(_currentToken.value);
 
             move_next_non_wspace();
 
@@ -467,7 +467,7 @@ Node* Parser::parse_function()
     if (_currentToken.type != TokenType::OPEN_BRACKET)
         Diagnostics::log_error("Function definition missing its body {.");
 
-    func->add_child(parse_block());
+    function_struct->body = parse_block();
 
     return func;
 }
@@ -479,8 +479,6 @@ Node* Parser::parse_function()
 /// @brief Should always end at the end of its own statement. Not the next!
 Node* Parser::parse_next_statement()
 {
-    // printf("Reading a statement beginning with: %s\n", get_token_type_name(_currentToken.type).c_str());
-
     // COMMENTS
     if (_currentToken.type == TokenType::COMMENT)
     {
@@ -494,12 +492,14 @@ Node* Parser::parse_next_statement()
     // VARIABLE ASSIGNMENT
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
     {
-        auto va = new Node(NodeType::VARIABLE_ASSIGNMENT, any::create<std::string>(_currentToken.value), _currentToken.lineNumber);
+        Node* va = new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S());
+        auto va_struct = va->get_struct<VariableAssignment_S>();
+        va_struct->variableName = _currentToken.value;
 
         move_next_non_wspace();
         move_next_non_wspace();
 
-        va->add_child(parse_expression());
+        va_struct->expression = parse_expression();
 
         if (!is_end_of_statement())
             Diagnostics::log_error("Incorrect variable assignment.");
@@ -514,7 +514,7 @@ Node* Parser::parse_next_statement()
         move_next_non_wspace();
 
         if (!is_end_of_statement())
-            Diagnostics::log_error("Incorrect function call " + fc->get_value<std::string>() + ".");
+            Diagnostics::log_error("Incorrect function call " + fc->get_struct<FunctionCall_S>()->functionName + ".");
 
         return fc;
     }
@@ -526,11 +526,11 @@ Node* Parser::parse_next_statement()
     // RETURN
     else if (_currentToken.type == TokenType::RETURN)
     {
-        auto* r = new Node(NodeType::RETURN, _currentToken.lineNumber);
+        auto r = new Node(NodeType::RETURN, _currentToken.lineNumber, new Return_S());
 
         move_next_non_wspace();
 
-        r->add_child(parse_expression());
+        r->get_struct<Return_S>()->expression = parse_expression();
 
         if (!is_end_of_statement())
             Diagnostics::log_error("Return not formatted properly.");
@@ -540,11 +540,11 @@ Node* Parser::parse_next_statement()
     // WHILE
     else if (_currentToken.type == TokenType::WHILE)
     {
-        auto* w = new Node(NodeType::WHILE, _currentToken.lineNumber);
+        auto* w = new Node(NodeType::WHILE, _currentToken.lineNumber, new While_S());
 
         move_next_non_wspace();
 
-        w->add_child(parse_expression());
+        w->get_struct<While_S>()->condition = parse_expression();
 
         if (is_end_of_statement() && _currentToken.type != TokenType::CLOSED_BRACKET)
             move_next_non_wspace_pass_eols();
@@ -552,7 +552,7 @@ Node* Parser::parse_next_statement()
         if (_currentToken.type != TokenType::OPEN_BRACKET)
             Diagnostics::log_error("While statement did not have an open bracket.");
 
-        w->add_child(parse_block());
+        w->get_struct<While_S>()->body = parse_block();
 
         return w;
     }
@@ -571,14 +571,14 @@ Node* Parser::parse_next_statement()
         if (!is_end_of_statement())
             Diagnostics::log_error("Variable increment was not properly formatted.");
 
-        any variableName = any::create<std::string>(vn);
-
-        return new Node(NodeType::VARIABLE_ASSIGNMENT, variableName, _currentToken.lineNumber, {
-            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, {
-                new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, { 
-                    new Node(NodeType::VARIABLE, variableName, _currentToken.lineNumber), new Node(NodeType::INTEGER, any::create<int>(1), _currentToken.lineNumber) 
-                }) 
-            }) 
+        return new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S{
+            vn,
+            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, new Expression_S{
+                new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{
+                    new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),
+                    new Node(NodeType::INTEGER, _currentToken.lineNumber, new int(1))
+                })
+            })
         });
     }
     // DECREMENT
@@ -591,14 +591,14 @@ Node* Parser::parse_next_statement()
         if (!is_end_of_statement())
             Diagnostics::log_error("Variable decrement was not properly formatted.");
 
-        any variableName = any::create<std::string>(vn);
-
-        return new Node(NodeType::VARIABLE_ASSIGNMENT, variableName, _currentToken.lineNumber, {
-            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, { 
-                new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, { 
-                    new Node(NodeType::VARIABLE, variableName, _currentToken.lineNumber), new Node(NodeType::INTEGER, any::create<int>(1), _currentToken.lineNumber) 
+        return new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S{
+            vn,
+            new Node(NodeType::EXPRESSION, _currentToken.lineNumber, new Expression_S{
+                new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{
+                    new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),
+                    new Node(NodeType::INTEGER, _currentToken.lineNumber, new int(1))
                 })
-            }) 
+            })
         });
     }
     // BREAK
@@ -620,7 +620,7 @@ Node* Parser::parse_next_statement()
 /// @brief Must start on an OPEN_BRACKET to start an inner block and nothing to start a file block
 Node* Parser::parse_block()
 {
-    auto* block = new Node(NodeType::BLOCK, _currentToken.lineNumber);
+    auto* block = new Node(NodeType::BLOCK, _currentToken.lineNumber, new Block_S());
 
     if (_currentToken.type == TokenType::OPEN_BRACKET)
     {
@@ -633,7 +633,7 @@ Node* Parser::parse_block()
             Node* stmt = parse_next_statement();
 
             if (stmt != nullptr)
-                block->add_child(stmt);
+                block->get_struct<Block_S>()->statements.push_back(stmt);
 
             move_next_non_wspace_pass_eols();
         }
@@ -653,7 +653,7 @@ Node* Parser::parse_block()
             Node* stmt = parse_next_statement();
 
             if (stmt != nullptr)
-                block->add_child(stmt);
+                block->get_struct<Block_S>()->statements.push_back(stmt);
 
             move_next_non_wspace_pass_eols();
         }

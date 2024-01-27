@@ -2,13 +2,17 @@
 
 #include "diagnostics.hpp"
 
-FunctionPointer::FunctionPointer(std::string functionName, ast::Node* function)
+using namespace popcorn::diagnostics;
+using namespace popcorn::parser;
+using namespace popcorn::runner;
+
+FunctionPointer::FunctionPointer(std::string functionName, Node* function)
 {
     this->functionName = functionName;
     this->function = function;
 }
 
-VariablePointer::VariablePointer(std::string variableName, obj::Object object)
+VariablePointer::VariablePointer(std::string variableName, Object object)
 {
     this->variableName = variableName;
     this->object = object;
@@ -30,7 +34,7 @@ Scope::Scope(Scope* parent)
     this->breakFlag = false;
 }
 
-void Scope::add_func(std::string name, ast::Node* function)
+void Scope::add_func(std::string name, Node* function)
 {
     for (auto func : functions)
     {
@@ -41,7 +45,7 @@ void Scope::add_func(std::string name, ast::Node* function)
     functions.push_back(FunctionPointer(name, function));
 }
 
-ast::Node* Scope::get_func(std::string name)
+Node* Scope::get_func(std::string name)
 {
     for (auto func : functions)
     {
@@ -57,7 +61,7 @@ ast::Node* Scope::get_func(std::string name)
     return nullptr;
 }
 
-void Scope::add_var(std::string name, obj::Object object)
+void Scope::add_var(std::string name, Object object)
 {
     for (const auto& v : variables)
     {

@@ -2,6 +2,8 @@
 
 #ifdef _WIN32
 
+using namespace helpers;
+
 WORD Console::consoleDefault = 0;
 
 void Console::init()

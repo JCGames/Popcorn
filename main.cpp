@@ -5,11 +5,11 @@
 #include "lib/lexer.hpp"
 #include "lib/parser.hpp"
 #include "lib/runner.hpp"
-#include "lib/console.hpp"
+#include "includes/console.hpp"
 #include "lib/diagnostics.hpp"
-#include "lib/any.hpp"
 
 using namespace std;
+using namespace popcorn::diagnostics;
 
 static bool DEBUG = false;
 
@@ -28,19 +28,18 @@ int main(int argc, char** args)
     {
         if (strcmp(args[i], "-d") == 0)
             DEBUG = true;
-        else if (strcmp(args[i], "-m") == 0)
-            any::DO_ANY_DEBUG = true;
     }
 
     if (argc > 1)
     {
+        // set up console output if on windows
         #ifdef _WIN32
-            Console::init();
+            helpers::Console::init();
         #endif
 
         // make sure the file is a .pop file
-        std::string fileName(args[1]);
-        std::string fileExt = get_file_ext(fileName);
+        string fileName(args[1]);
+        string fileExt = get_file_ext(fileName);
 
         if (fileExt.empty())
         {
@@ -55,8 +54,8 @@ int main(int argc, char** args)
          * Lexing ...
         */
 
-        lex::Lexer lexer(fileName);
-        std::vector<lex::Token> tokens = lexer.get_tokens();
+        popcorn::lexer::Lexer lexer(fileName);
+        std::vector<popcorn::lexer::Token> tokens = lexer.get_tokens();
 
         if (DEBUG)
         {
@@ -72,8 +71,8 @@ int main(int argc, char** args)
          * Parsing ...
         */
 
-        prs::Parser parser(tokens);
-        ast::AST* ast = parser.parse_ast();
+        popcorn::parser::Parser parser(tokens);
+        popcorn::parser::AST* ast = parser.parse_ast();
 
         if (DEBUG)
         {
@@ -85,17 +84,17 @@ int main(int argc, char** args)
          * Running ...
         */
 
-        if (DEBUG)
-            printf("\n============================\n");
+        // if (DEBUG)
+        //     printf("\n============================\n");
         
-        if (DEBUG)
-            printf("========== OUTPUT ==========\n\n");
+        // if (DEBUG)
+        //     printf("========== OUTPUT ==========\n\n");
 
-        run::Runner runner;
-        runner.run(*ast);
+        // popcorn::runner::Runner runner;
+        // runner.run(*ast);
 
-        if (DEBUG)
-            printf("\n============================\n\n");
+        // if (DEBUG)
+        //     printf("\n============================\n\n");
 
         if (ast != NULL)
             delete ast;

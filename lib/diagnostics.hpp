@@ -4,45 +4,48 @@
 #include <string>
 #include "lexer.hpp"
 
-enum class DiagnosticState 
+namespace popcorn::diagnostics
 {
-    _LEXER,
-    _PARSER,
-    _RUNNER,
-};
-
-struct DiagnosticInfo
-{
-    DiagnosticState state;
-    int lineNumber;
-    int columnNumber;
-    lex::Token currentToken;
-
-    DiagnosticInfo() 
+    enum class DiagnosticState 
     {
-        state = DiagnosticState::_LEXER;
-        lineNumber = 0;
-        columnNumber = 0;
-        currentToken = lex::Token();
-    }
+        _LEXER,
+        _PARSER,
+        _RUNNER,
+    };
 
-    DiagnosticInfo(DiagnosticState state)
+    struct DiagnosticInfo
     {
-        this->state = state;
-        lineNumber = 0;
-        columnNumber = 0;
-        currentToken = lex::Token();
-    }
-};
+        DiagnosticState state;
+        int lineNumber;
+        int columnNumber;
+        popcorn::lexer::Token currentToken;
 
-class Diagnostics 
-{
-    public:
-        static DiagnosticInfo info;
+        DiagnosticInfo() 
+        {
+            state = DiagnosticState::_LEXER;
+            lineNumber = 0;
+            columnNumber = 0;
+            currentToken = popcorn::lexer::Token();
+        }
 
-        static void log_error(std::string message);
-        static void log_warning(std::string message);
-        static void log_information(std::string message);
-};
+        DiagnosticInfo(DiagnosticState state)
+        {
+            this->state = state;
+            lineNumber = 0;
+            columnNumber = 0;
+            currentToken = popcorn::lexer::Token();
+        }
+    };
+
+    class Diagnostics 
+    {
+        public:
+            static DiagnosticInfo info;
+
+            static void log_error(std::string message);
+            static void log_warning(std::string message);
+            static void log_information(std::string message);
+    };
+}
 
 #endif // ERROR

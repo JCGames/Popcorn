@@ -1,6 +1,6 @@
-func add(x, y)
+if x < 1
 {
-    return x + y
+    x++
+    x--
+    break
 }
-
-printl(add(1,1))

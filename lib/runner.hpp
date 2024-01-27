@@ -10,21 +10,21 @@
 #include "object.hpp"
 #include "scope.hpp"
 
-namespace run 
+namespace popcorn::runner
 {
     class Runner
     {
         Scope _rootScope;
 
-        void create_function_lookup_table(ast::Node* block, Scope& scope);
-        obj::Object call_function(ast::Node* funcCall, Scope& scope);
-        obj::Object run_block(ast::Node* block, Scope& scope);
-        obj::Object interpret(ast::Node* stat, Scope& scope);
+        void create_function_lookup_table(popcorn::parser::Node* block, Scope& scope);
+        Object call_function(popcorn::parser::Node* funcCall, Scope& scope);
+        Object run_block(popcorn::parser::Node* block, Scope& scope);
+        Object interpret(popcorn::parser::Node* stat, Scope& scope);
 
         public:
             Runner();
             
-            void run(ast::AST& ast);
+            void run(popcorn::parser::AST& ast);
     };
 }
 
