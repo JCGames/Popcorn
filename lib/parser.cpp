@@ -310,7 +310,7 @@ Node* Parser::parse_factor()
     else if (_currentToken.type == TokenType::SUB)
     {
         move_next_non_wspace();
-        result = new Node(NodeType::NEGATE, _currentToken.lineNumber, new UnaryOperator_S{ parse_expression() });
+        return new Node(NodeType::NEGATE, _currentToken.lineNumber, new UnaryOperator_S{ parse_expression() });
     }
     // BOOLEAN
     else if (_currentToken.type == TokenType::BOOLEAN)
