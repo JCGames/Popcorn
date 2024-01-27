@@ -1,1 +1,16 @@
-printl("hello, world!")
+func loop()
+{
+    i = 0
+
+    while i < 10
+    {
+        if i == 5
+        {
+            return i
+        }
+
+        i++
+    }
+}
+
+printl(loop())

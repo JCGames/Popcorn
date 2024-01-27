@@ -240,7 +240,7 @@ Object Runner::interpret(Node* node, Scope& scope)
 
                     Scope whileScope(&scope);
                     Object stmtValue = run_block(while_struct->body, whileScope);
-
+                    
                     if (whileScope.returnFlag)
                     {
                         scope.returnFlag = true;
@@ -248,6 +248,7 @@ Object Runner::interpret(Node* node, Scope& scope)
                     }
                     else if (whileScope.breakFlag)
                     {
+                        whileScope.breakFlag = true;
                         return Object();
                     }
 
@@ -276,6 +277,11 @@ Object Runner::interpret(Node* node, Scope& scope)
                         scope.returnFlag = true;
                         return stmtValue;
                     }
+                    else if (ifScope.breakFlag)
+                    {
+                        scope.breakFlag = true;
+                        return Object();
+                    }
                 }
                 else if (if_struct->branchingElseOrIf != nullptr)
                 {
@@ -294,13 +300,17 @@ Object Runner::interpret(Node* node, Scope& scope)
                     scope.returnFlag = true;
                     return stmtValue;
                 }
+                else if (elseScope.breakFlag)
+                {
+                    scope.breakFlag = true;
+                    return Object();
+                }
             }
             break;
 
         case NodeType::RETURN:
             scope.returnFlag = true;
             return interpret(node->get_struct<Return_S>()->expression, scope);
-            break;
 
         case NodeType::BREAK:
             scope.breakFlag = true;
