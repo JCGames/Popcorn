@@ -32,9 +32,7 @@ void Runner::create_function_lookup_table(Node* block, Scope& scope)
         Diagnostics::info.lineNumber = stmt->get_line_index();
 
         if (stmt->get_type() == NodeType::FUNCTION)
-        {
             scope.add_func(stmt->get_struct<Funciton_S>()->name, stmt);
-        }
     }
 }
 
@@ -45,9 +43,36 @@ Object Runner::call_function(Node* funcCall, Scope& scope)
     auto children = fc_struct->paramValues;
 
     /**
+     * USER DEFINED FUNCTIONS
+    */
+    if (Node* func = scope.get_func(functionName))
+    {
+        if (func->get_type() != NodeType::FUNCTION)
+            throw std::runtime_error("Not a function!");
+
+        auto func_struct = func->get_struct<Funciton_S>();
+
+        // declare a scope and set up the scope's parameters
+        Scope functionScope(&scope);
+        functionScope.canNestFunctions = true;
+
+        // sets up function's local passed in variables
+        if (func_struct->paramList.size() != children.size())
+            Diagnostics::log_error("Function call " + functionName + " did not match the functions parameter list.");
+
+        for (size_t i = 0; i < func_struct->paramList.size(); ++i)
+            functionScope.add_var(func_struct->paramList[i], interpret(children[i]->get_struct<Expression_S>()->root, scope));
+
+        // allows for nesting functions within functions
+        create_function_lookup_table(func_struct->body, functionScope);
+
+        // runs the function
+        return run_block(func_struct->body, functionScope);
+    }
+    /**
      * LANGUAGE DEFINED FUNCTIONS
     */
-    if (functionName == "printl")
+    else if (functionName == "printl")
     {
         if (children.size() == 1)
             printf("%s\n", interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_string().get_str().c_str());
@@ -103,33 +128,6 @@ Object Runner::call_function(Node* funcCall, Scope& scope)
             return interpret(children[0]->get_struct<Expression_S>()->root, scope).cast_to_string();
         else
             Diagnostics::log_error(functionName + " takes one argument.");
-    }
-    /**
-     * CUSTOM FUNCTIONS
-    */
-    else if (Node* func = scope.get_func(functionName))
-    {
-        if (func->get_type() != NodeType::FUNCTION)
-            throw std::runtime_error("Not a function!");
-
-        auto func_struct = func->get_struct<Funciton_S>();
-
-        // declare a scope and set up the scope's parameters
-        Scope functionScope(&scope);
-        functionScope.canNestFunctions = true;
-
-        // sets up function's local passed in variables
-        if (func_struct->paramList.size() != children.size())
-            Diagnostics::log_error("Function call " + functionName + " did not match the functions parameter list.");
-
-        for (size_t i = 0; i < func_struct->paramList.size(); ++i)
-            functionScope.add_var(func_struct->paramList[i], interpret(children[i]->get_struct<Expression_S>()->root, scope));
-
-        // allows for nesting functions within functions
-        create_function_lookup_table(func_struct->body, functionScope);
-
-        // runs the function
-        run_block(func_struct->body, functionScope);
     }
     /**
      * FUNCTION DOES NOT EXIST

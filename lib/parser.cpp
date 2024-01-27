@@ -484,7 +484,7 @@ Node* Parser::parse_next_statement()
     {
         int nextLine = _currentToken.lineNumber + 1;
 
-        while (_currentToken.lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+        while (peek_next().lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
             move_next();
 
         return nullptr;
