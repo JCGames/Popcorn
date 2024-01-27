@@ -293,7 +293,7 @@ Object Runner::interpret(Node* node, Scope& scope)
         case NodeType::ELSE:
             {
                 Scope elseScope(&scope);
-                Object stmtValue = run_block(node->get_struct<While_S>()->body, elseScope);
+                Object stmtValue = run_block(node->get_struct<Else_S>()->body, elseScope);
 
                 if (elseScope.returnFlag)
                 {

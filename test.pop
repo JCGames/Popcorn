@@ -1,16 +1,17 @@
-func loop()
+main()
+
+func isValid(value)
 {
-    i = 0
-
-    while i < 10
-    {
-        if i == 5
-        {
-            return i
-        }
-
-        i++
-    }
+	if value == 1 {
+		return true
+	} else {
+		return false
+	}
 }
 
-printl(loop())
+func main()
+{
+	x = input()
+	
+	printl(isValid(x))
+}
