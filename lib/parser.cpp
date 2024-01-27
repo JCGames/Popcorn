@@ -368,7 +368,7 @@ Node* Parser::parse_if()
 
 Node* Parser::parse_else()
 {
-    auto _else = new Node(NodeType::ELSE, _currentToken.lineNumber);
+    auto _else = new Node(NodeType::ELSE, _currentToken.lineNumber, new Else_S());
 
     move_next_non_wspace();
 
