@@ -25,7 +25,12 @@ namespace popcorn::parser
         void move_next_non_wspace();
         void move_next_non_wspace_pass_eols();
         popcorn::lexer::Token peek_next_non_wspace_pass_eols();
+
         bool is_end_of_statement();
+        bool is_function_call();
+        bool is_variable_assignment();
+        bool is_increment();
+        bool is_decrement();
 
         popcorn::parser::Node* parse_expression();
         popcorn::parser::Node* parse_condition();
@@ -37,11 +42,11 @@ namespace popcorn::parser
 
         popcorn::parser::Node* parse_if();
         popcorn::parser::Node* parse_else();
-
-        popcorn::parser::Node* parse_next_statement();
+        popcorn::parser::Node* parse_member_accessor(Node* functionCall);
         popcorn::parser::Node* parse_function_call();
         popcorn::parser::Node* parse_function();
         popcorn::parser::Node* parse_block();
+        popcorn::parser::Node* parse_next_statement();
 
         public:
             Parser();

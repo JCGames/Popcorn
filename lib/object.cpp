@@ -39,6 +39,9 @@ Object::Object(const Object& other)
             case DataType::STRING:
                 value = new std::string(*static_cast<std::string*>(other.value));
                 break;
+            case DataType::ARRAY:
+                value = new std::vector<Object>();
+                break;
             case DataType::_NULL:
                 value = nullptr;
                 break;
@@ -70,6 +73,9 @@ Object& Object::operator=(const Object& other)
                 case DataType::STRING:
                     value = new std::string(*static_cast<std::string*>(other.value));
                     break;
+                case DataType::ARRAY:
+                    value = new std::vector<Object>(*static_cast<std::vector<Object>*>(other.value));
+                    break;
             }
         }
     }
@@ -99,6 +105,9 @@ void Object::delete_value(Object& obj)
                 break;
             case DataType::STRING:
                 delete static_cast<std::string*>(obj.value);
+                break;
+            case DataType::ARRAY:
+                delete static_cast<std::vector<Object>*>(obj.value);
                 break;
         }
 
@@ -143,6 +152,14 @@ std::string Object::get_str()
 {
     if (type == DataType::STRING)
         return *(std::string*)value;
+    else
+        throw std::runtime_error("Object is not a string!");
+}
+
+std::vector<Object> Object::get_array()
+{
+    if (type == DataType::STRING)
+        return *(std::vector<Object>*)value;
     else
         throw std::runtime_error("Object is not a string!");
 }

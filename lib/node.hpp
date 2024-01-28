@@ -47,6 +47,7 @@ namespace popcorn::parser
         RETURN,
         POWER_OPERATOR,
         BREAK,
+        MEMBER_ACCESSOR,
     };
 
     std::string get_node_type_name(NodeType type);
@@ -237,6 +238,21 @@ namespace popcorn::parser
         {
             if (expression != nullptr)
                 delete expression;
+        }
+    };
+
+    struct MemberAccessor_S
+    {
+        Node* _class;
+        Node* member;
+
+        ~MemberAccessor_S()
+        {
+            if (member != nullptr)
+                delete member;
+            
+            if (_class != nullptr)
+                delete _class;
         }
     };
 }

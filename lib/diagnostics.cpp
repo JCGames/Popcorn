@@ -3,6 +3,7 @@
 #include "../includes/console.hpp"
 
 using namespace popcorn::diagnostics;
+using namespace popcorn::lexer;
 
 DiagnosticInfo Diagnostics::info = DiagnosticInfo();
 

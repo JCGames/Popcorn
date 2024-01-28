@@ -101,6 +101,26 @@ bool Parser::is_end_of_statement()
         (_currentToken.type == TokenType::CLOSED_BRACKET && _isInChildBlock);
 }
 
+bool Parser::is_function_call()
+{
+    return _currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::OPEN_PARAN;
+}
+
+bool Parser::is_variable_assignment()
+{
+    return _currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT;
+}
+
+bool Parser::is_increment()
+{
+    return _currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::INCREMENT;
+}
+
+bool Parser::is_decrement()
+{
+    return _currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT;
+}
+
 /**
  * Expression stuff below
 */
@@ -265,8 +285,13 @@ Node* Parser::parse_factor()
         if (_currentToken.type != TokenType::CLOSE_PARAN)
             throw std::runtime_error("Missing a closed paranthesis on line: " + std::to_string(_currentToken.lineNumber));
     }
+    // IS VARIABLE MEMBER ACCESSOR
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::DOT)
+    {
+        result = parse_member_accessor(nullptr);
+    }
     // FUNCTION CALLS
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::OPEN_PARAN)
+    else if (is_function_call())
     {
         result = parse_function_call();
     }
@@ -383,6 +408,48 @@ Node* Parser::parse_else()
     return _else;
 }
 
+Node* Parser::parse_member_accessor(Node* functionCall)
+{
+    Node* result = new Node(NodeType::MEMBER_ACCESSOR, _currentToken.lineNumber, new MemberAccessor_S());
+    auto memberAccessorPtr = result->get_struct<MemberAccessor_S>();
+
+    if (functionCall != nullptr)
+    {
+        memberAccessorPtr->_class = functionCall;
+        move_next_non_wspace_pass_eols(); // move to member accessor
+        move_next_non_wspace_pass_eols(); // move to right side of the member accessor
+    }
+    else
+    {
+        memberAccessorPtr->_class = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
+        move_next_non_wspace_pass_eols(); // move to member accessor
+        move_next_non_wspace_pass_eols(); // move to right side of the member accessor
+    }
+
+    if (is_function_call())
+    {
+        memberAccessorPtr->member = parse_function_call();
+    }
+    else if (_currentToken.type == TokenType::WORD)
+    {
+        if (peek_next_non_wspace_pass_eols().type == TokenType::DOT)
+        {
+            memberAccessorPtr->member = parse_member_accessor(nullptr);
+        }
+        else
+        {
+            memberAccessorPtr->member = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
+        }
+    }
+    else
+    {
+        Diagnostics::log_error("Could not read right side of member accessor.");
+    }
+
+    return result;
+}
+
+/// @brief Ends on the closed parathesis of the function call.
 Node* Parser::parse_function_call()
 {
     auto* fc = new Node(NodeType::FUNCTION_CALL, _currentToken.lineNumber, new FunctionCall_S());
@@ -415,6 +482,9 @@ Node* Parser::parse_function_call()
         if (_currentToken.type != TokenType::CLOSE_PARAN)
             Diagnostics::log_error("Missing a closed parenthesis ).");
     }
+
+    if (peek_next_non_wspace_pass_eols().type == TokenType::DOT)
+        return parse_member_accessor(fc);
 
     return fc;
 }
@@ -472,6 +542,51 @@ Node* Parser::parse_function()
     return func;
 }
 
+/// @brief Must start on an OPEN_BRACKET to start an inner block and nothing to start a file block
+Node* Parser::parse_block()
+{
+    auto* block = new Node(NodeType::BLOCK, _currentToken.lineNumber, new Block_S());
+
+    if (_currentToken.type == TokenType::OPEN_BRACKET)
+    {
+        _isInChildBlock = true;
+
+        move_next_non_wspace_pass_eols();
+
+        while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
+        {
+            Node* stmt = parse_next_statement();
+
+            if (stmt != nullptr)
+                block->get_struct<Block_S>()->statements.push_back(stmt);
+
+            move_next_non_wspace_pass_eols();
+        }
+
+        if (_currentToken.type != TokenType::CLOSED_BRACKET)
+            Diagnostics::log_error("Missing a closed bracket }.");
+
+        _isInChildBlock = false;
+    }
+    else
+    {
+        if (_currentToken.type == TokenType::WHITESPACE || is_end_of_statement())
+            move_next_non_wspace_pass_eols();
+
+        while (_currentToken.type != TokenType::END_OF_FILE)
+        {
+            Node* stmt = parse_next_statement();
+
+            if (stmt != nullptr)
+                block->get_struct<Block_S>()->statements.push_back(stmt);
+
+            move_next_non_wspace_pass_eols();
+        }
+    }
+
+    return block;
+}
+
 /**
  * Meat and potatos of parsing below
 */
@@ -489,8 +604,19 @@ Node* Parser::parse_next_statement()
 
         return nullptr;
     }
+    // MEMBER ACCESSOR
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::DOT)
+    {
+        Node* result = parse_member_accessor(nullptr);
+        move_next_non_wspace();
+
+        if (!is_end_of_statement())
+            Diagnostics::log_error("Invalid statement!");
+
+        return result;
+    }
     // VARIABLE ASSIGNMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::ASSIGNMENT)
+    else if (is_variable_assignment())
     {
         Node* va = new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S());
         auto va_struct = va->get_struct<VariableAssignment_S>();
@@ -507,7 +633,7 @@ Node* Parser::parse_next_statement()
         return va;
     }
     // FUNCITON CALLS
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::OPEN_PARAN)
+    else if (is_function_call())
     {
         auto fc = parse_function_call();
         
@@ -562,7 +688,7 @@ Node* Parser::parse_next_statement()
         return parse_if();
     }
     // INCREMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::INCREMENT)
+    else if (is_increment())
     {
         std::string vn = _currentToken.value;
         move_next_non_wspace();
@@ -582,7 +708,7 @@ Node* Parser::parse_next_statement()
         });
     }
     // DECREMENT
-    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace().type == TokenType::DECREMENT)
+    else if (is_decrement())
     {
         std::string vn = _currentToken.value;
         move_next_non_wspace();
@@ -615,51 +741,6 @@ Node* Parser::parse_next_statement()
     Diagnostics::log_error("Could not read statement.");
 
     return nullptr;
-}
-
-/// @brief Must start on an OPEN_BRACKET to start an inner block and nothing to start a file block
-Node* Parser::parse_block()
-{
-    auto* block = new Node(NodeType::BLOCK, _currentToken.lineNumber, new Block_S());
-
-    if (_currentToken.type == TokenType::OPEN_BRACKET)
-    {
-        _isInChildBlock = true;
-
-        move_next_non_wspace_pass_eols();
-
-        while (_currentToken.type != TokenType::CLOSED_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
-        {
-            Node* stmt = parse_next_statement();
-
-            if (stmt != nullptr)
-                block->get_struct<Block_S>()->statements.push_back(stmt);
-
-            move_next_non_wspace_pass_eols();
-        }
-
-        if (_currentToken.type != TokenType::CLOSED_BRACKET)
-            Diagnostics::log_error("Missing a closed bracket }.");
-
-        _isInChildBlock = false;
-    }
-    else
-    {
-        if (_currentToken.type == TokenType::WHITESPACE || is_end_of_statement())
-            move_next_non_wspace_pass_eols();
-
-        while (_currentToken.type != TokenType::END_OF_FILE)
-        {
-            Node* stmt = parse_next_statement();
-
-            if (stmt != nullptr)
-                block->get_struct<Block_S>()->statements.push_back(stmt);
-
-            move_next_non_wspace_pass_eols();
-        }
-    }
-
-    return block;
 }
 
 /// @brief Parses a list of tokens and returns its Abstract Syntax Tree

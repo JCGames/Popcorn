@@ -5,21 +5,6 @@ using namespace popcorn::runner;
 using namespace popcorn::diagnostics;
 using namespace popcorn::parser;
 
-Object& Scope::get_var(std::string name)
-{
-    for (auto& v : variables)
-    {
-        if (v.variableName == name)
-            return v.object;
-    }
-
-    if (parent != nullptr)
-        return parent->get_var(name);
-
-    Diagnostics::log_error("Variable " + name + " was never declared.");
-    throw std::runtime_error("Variable " + name + " was never declared.");
-}
-
 Runner::Runner()
 {
     Diagnostics::info = DiagnosticInfo(DiagnosticState::_RUNNER);

@@ -7,10 +7,9 @@
 
 struct FunctionPointer
 {
-    std::string functionName;
-    popcorn::parser::Node* function;
-
-    FunctionPointer(std::string functionName, popcorn::parser::Node* function);
+    popcorn::runner::Function function;
+    
+    FunctionPointer(popcorn::runner::Function function);
 };
 
 struct VariablePointer

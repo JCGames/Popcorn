@@ -6,9 +6,8 @@ using namespace popcorn::diagnostics;
 using namespace popcorn::parser;
 using namespace popcorn::runner;
 
-FunctionPointer::FunctionPointer(std::string functionName, Node* function)
+FunctionPointer::FunctionPointer(Function function)
 {
-    this->functionName = functionName;
     this->function = function;
 }
 
@@ -36,22 +35,22 @@ Scope::Scope(Scope* parent)
 
 void Scope::add_func(std::string name, Node* function)
 {
-    for (auto func : functions)
+    for (auto funcPtr : functions)
     {
-        if (name == func.functionName)
+        if (name == funcPtr.function.name)
             Diagnostics::log_error("Function " + name + " has already been declared in this scope.");
     }
 
-    functions.push_back(FunctionPointer(name, function));
+    functions.push_back(Function(name, function));
 }
 
 Node* Scope::get_func(std::string name)
 {
-    for (auto func : functions)
+    for (auto funcPtr : functions)
     {
-        if (func.functionName == name)
+        if (funcPtr.function.name == name)
         {
-            return func.function;
+            return funcPtr.function.root;
         }
     }
 
@@ -84,4 +83,19 @@ bool Scope::has_var(std::string name)
         return parent->has_var(name);
 
     return false;
+}
+
+Object& Scope::get_var(std::string name)
+{
+    for (auto& v : variables)
+    {
+        if (v.variableName == name)
+            return v.object;
+    }
+
+    if (parent != nullptr)
+        return parent->get_var(name);
+
+    Diagnostics::log_error("Variable " + name + " was never declared.");
+    throw std::runtime_error("Variable " + name + " was never declared.");
 }

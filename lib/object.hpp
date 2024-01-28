@@ -12,6 +12,7 @@
 
 #include <string>
 #include <stdexcept>
+#include "parser.hpp"
 
 namespace popcorn::runner
 {
@@ -21,6 +22,9 @@ namespace popcorn::runner
         INTEGER,
         DOUBLE,
         STRING,
+        ARRAY,
+        FUNCTION,
+        CLASS,
         _NULL
     };
 
@@ -47,6 +51,7 @@ namespace popcorn::runner
             int get_int();
             double get_double();
             std::string get_str();
+            std::vector<Object> get_array();
 
             /**
              * Casting functions
@@ -75,6 +80,40 @@ namespace popcorn::runner
             Object greater_than_or_equal_to(Object obj);
             Object less_than_or_equal_to(Object obj);
             Object power(Object obj);
+    };
+
+    struct Function
+    {
+        std::string name;
+        popcorn::parser::Node* root;
+
+        Function()
+        {
+            name = "";
+            root = nullptr;
+        }
+
+        Function(std::string name, popcorn::parser::Node* root)
+        {
+            this->name = name;
+            this->root = root;
+        }
+    };
+
+    struct Array
+    {
+        Object* array;
+
+        Array(int count)
+        {
+            array = new Object[count];
+        }
+
+        ~Array()
+        {
+            if (array != nullptr)
+                delete[] array;
+        }
     };
 }
 

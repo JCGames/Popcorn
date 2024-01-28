@@ -92,17 +92,17 @@ int main(int argc, char** args)
          * Running ...
         */
 
-        if (DEBUG)
-            printf("\n============================\n");
+        // if (DEBUG)
+        //     printf("\n============================\n");
         
-        if (DEBUG)
-            printf("========== OUTPUT ==========\n\n");
+        // if (DEBUG)
+        //     printf("========== OUTPUT ==========\n\n");
 
-        popcorn::runner::Runner runner;
-        runner.run(*ast);
+        // popcorn::runner::Runner runner;
+        // runner.run(*ast);
 
-        if (DEBUG)
-            printf("\n============================\n\n");
+        // if (DEBUG)
+        //     printf("\n============================\n\n");
 
         if (ast != NULL)
             delete ast;
