@@ -151,10 +151,10 @@ void AST::print_statement(Node* node, std::string indent)
             print_statement(node->get_struct<MemberAccessor_S>()->member, indent + '\t');
             break;
         case NodeType::ARRAY:
+            printf("%sVALUES: [\n", indent.c_str());
             for (auto exp : node->get_struct<Array_S>()->expressions)
-            {
                 print_statement(exp, indent + '\t');
-            }
+            printf("%s]\n", indent.c_str());
             break;
     }
 }

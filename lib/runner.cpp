@@ -146,6 +146,17 @@ Object Runner::interpret(Node* node, Scope& scope)
             return scope.get_var(*node->get_struct<std::string>());
         case NodeType::EXPRESSION:
             return interpret(node->get_struct<Expression_S>()->root, scope);
+        case NodeType::ARRAY:
+            {
+                auto arrayPtr = node->get_struct<Array_S>();
+                std::vector<Object>* array = new std::vector<Object>();
+
+                for (auto exp : arrayPtr->expressions)
+                    array->push_back(interpret(exp, scope));
+                
+                return Object(DataType::ARRAY, array);
+            }
+            break;
 
         /**
          * Operators
@@ -304,6 +315,47 @@ Object Runner::interpret(Node* node, Scope& scope)
         case NodeType::FUNCTION:
             break;
         
+        case NodeType::MEMBER_ACCESSOR:
+            {
+                auto memberAccessPtr = node->get_struct<MemberAccessor_S>();
+
+                Object result = interpret(memberAccessPtr->_class, scope);
+
+                if (result.get_type() == DataType::ARRAY)
+                {
+                    if (memberAccessPtr->member->get_type() == NodeType::FUNCTION_CALL)
+                    {
+                        auto funcCallPtr = memberAccessPtr->member->get_struct<FunctionCall_S>();
+
+                        if (funcCallPtr->functionName == "get")
+                        {
+                            if (funcCallPtr->paramValues.size() == 1)
+                            {
+                                Object indexObj = interpret(funcCallPtr->paramValues[0], scope);
+
+                                if (indexObj.get_type() == DataType::INTEGER)
+                                {
+                                    int index = indexObj.get_int();
+                                    if (index >= 0 && index < result.get_array().size())
+                                    {
+                                        return result.get_array()[index];
+                                    }
+                                    else
+                                    {
+                                        Diagnostics::log_error("Index was outside the bounds of the array!");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Diagnostics::log_error("Incorrect number of parameters");
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+
         default:
             Diagnostics::log_warning("Could not interpret statement " + get_node_type_name(node->get_type()) + ".");
             break;

@@ -23,7 +23,7 @@ Object::Object(const Object& other)
 {
     this->type = other.type;
 
-    if (other.value != nullptr) 
+    if (other.value != nullptr)
     {
         switch (type)
         {
@@ -40,7 +40,7 @@ Object::Object(const Object& other)
                 value = new std::string(*static_cast<std::string*>(other.value));
                 break;
             case DataType::ARRAY:
-                value = new std::vector<Object>();
+                value = new std::vector<Object>(*static_cast<std::vector<Object>*>(other.value));
                 break;
             case DataType::_NULL:
                 value = nullptr;
@@ -54,11 +54,10 @@ Object& Object::operator=(const Object& other)
     if (this != &other)
     {
         delete_value(*this);
+        this->type = other.type;
 
         if (other.value != nullptr)
         {
-            this->type = other.type;
-
             switch (type)
             {
                 case DataType::BOOLEAN:
@@ -111,6 +110,7 @@ void Object::delete_value(Object& obj)
                 break;
         }
 
+        obj.type = DataType::_NULL;
         obj.value = nullptr;
     }
 }
@@ -158,10 +158,10 @@ std::string Object::get_str()
 
 std::vector<Object>& Object::get_array()
 {
-    if (type == DataType::STRING)
+    if (type == DataType::ARRAY)
         return *static_cast<std::vector<Object>*>(value);
     else
-        throw std::runtime_error("Object is not a string!");
+        throw std::runtime_error("Object is not an array!");
 }
 
 Class& Object::get_class()
@@ -174,10 +174,10 @@ Class& Object::get_class()
 
 Function& Object::get_function()
 {
-    if (type == DataType::CLASS)
+    if (type == DataType::FUNCTION)
         return *static_cast<Function*>(value);
     else
-        throw std::runtime_error("Object is not a class!");
+        throw std::runtime_error("Object is not a function!");
 }
 
 /**
@@ -290,6 +290,34 @@ Object Object::cast_to_string()
             return Object(DataType::STRING, new std::string(std::to_string(get_int())));
         case DataType::DOUBLE:
             return Object(DataType::STRING, new std::string(std::to_string(get_double())));
+        case DataType::ARRAY:
+            {
+                std::string result = "[ ";
+
+                auto array = get_array();
+
+                if (array.size() > 0)
+                {
+                    for (int i = 0; i < array.size(); i++)
+                    {
+                        bool isString = array[i].get_type() == DataType::STRING;
+
+                        if (isString)
+                            result += "\"";
+
+                        if (i == array.size() - 1)
+                            result += array[i].cast_to_string().get_str() + (isString ? "\"" : "") + " ]";
+                        else
+                            result += array[i].cast_to_string().get_str() + (isString ? "\"" : "") + ", ";
+                    }
+                }
+                else
+                {
+                    result += "]";
+                }
+                
+                return Object(DataType::STRING, new std::string(result));
+            }
         case DataType::_NULL:
             return Object(DataType::STRING, new std::string("NULL"));
     }

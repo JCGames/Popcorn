@@ -411,7 +411,7 @@ Node* Parser::parse_array()
 {
     Node* array = new Node(NodeType::ARRAY, _currentToken.lineNumber, new Array_S());
 
-    move_next_non_wspace();
+    move_next_non_wspace_pass_eols();
 
     while (_currentToken.type != TokenType::CLOSED_SQUARE_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
     {
@@ -420,14 +420,17 @@ Node* Parser::parse_array()
         if (expression != nullptr)
             array->get_struct<Array_S>()->expressions.push_back(expression);
 
-        if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSED_SQUARE_BRACKET)
+        if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace_pass_eols().type != TokenType::CLOSED_SQUARE_BRACKET)
         {
-            move_next_non_wspace();
+            move_next_non_wspace_pass_eols();
             continue;
         }
 
         break;
     }
+
+    if (_currentToken.type == TokenType::WHITESPACE || _currentToken.type == TokenType::END_OF_LINE)
+        move_next_non_wspace_pass_eols();
 
     if (_currentToken.type != TokenType::CLOSED_SQUARE_BRACKET)
         Diagnostics::log_error("Missing closed square bracket ]");

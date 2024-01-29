@@ -115,7 +115,7 @@ namespace popcorn::runner
     struct Class
     {
         std::string name;
-        std::vector<std::pair<std::string, Object>> variableMembers;
+        std::vector<std::pair<std::string, Variable>> variableMembers;
         std::vector<std::pair<std::string, Function>> functionMembers;
     };
 }
