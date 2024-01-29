@@ -2,9 +2,9 @@
 
 #include "diagnostics.hpp"
 
+using namespace popcorn::runner;
 using namespace popcorn::diagnostics;
 using namespace popcorn::parser;
-using namespace popcorn::runner;
 
 FunctionPointer::FunctionPointer(Function function)
 {

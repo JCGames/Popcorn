@@ -40,9 +40,11 @@ namespace popcorn::parser
         popcorn::parser::Node* parse_power();
         popcorn::parser::Node* parse_factor();
 
+        popcorn::parser::Node* parse_array_accessor(Node* lastNode);
+        popcorn::parser::Node* parse_array();
         popcorn::parser::Node* parse_if();
         popcorn::parser::Node* parse_else();
-        popcorn::parser::Node* parse_member_accessor(Node* functionCall);
+        popcorn::parser::Node* parse_member_accessor(Node* lastNode);
         popcorn::parser::Node* parse_function_call();
         popcorn::parser::Node* parse_function();
         popcorn::parser::Node* parse_block();

@@ -41,6 +41,7 @@ std::string popcorn::parser::get_node_type_name(NodeType type)
         case NodeType::POWER_OPERATOR: return "POWER OPERATOR";
         case NodeType::BREAK: return "BREAK";
         case NodeType::MEMBER_ACCESSOR: return "MEMBER ACCESSOR";
+        case NodeType::ARRAY: return "ARRAY";
         default: return "UNDEFINED";
     }
 }

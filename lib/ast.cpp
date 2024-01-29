@@ -71,7 +71,9 @@ void AST::print_statement(Node* node, std::string indent)
             print_statement(node->get_struct<Expression_S>()->root, indent + '\t');
             break;
         case NodeType::VARIABLE_ASSIGNMENT:
-            printf("%sNAME: |%s|\n", indent.c_str(), node->get_struct<VariableAssignment_S>()->variableName.c_str());
+            printf("%sVARIABLE:\n", indent.c_str());
+            print_statement(node->get_struct<VariableAssignment_S>()->variable, indent + '\t');
+            printf("%sEXPRESSION:\n", indent.c_str());
             print_statement(node->get_struct<VariableAssignment_S>()->expression, indent + '\t');
             break;
         case NodeType::BLOCK:
@@ -147,6 +149,12 @@ void AST::print_statement(Node* node, std::string indent)
             print_statement(node->get_struct<MemberAccessor_S>()->_class, indent + '\t');
             printf("%sMEMBER:\n", indent.c_str());
             print_statement(node->get_struct<MemberAccessor_S>()->member, indent + '\t');
+            break;
+        case NodeType::ARRAY:
+            for (auto exp : node->get_struct<Array_S>()->expressions)
+            {
+                print_statement(exp, indent + '\t');
+            }
             break;
     }
 }

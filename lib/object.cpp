@@ -127,7 +127,7 @@ void* Object::get_value() const
 bool Object::get_bool()
 {
     if (type == DataType::BOOLEAN)
-        return *(bool*)value;
+        return *static_cast<bool*>(value);
     else
         throw std::runtime_error("Object is not a boolean!");
 }
@@ -135,7 +135,7 @@ bool Object::get_bool()
 int Object::get_int()
 {
     if (type == DataType::INTEGER)
-        return *(int*)value;
+        return *static_cast<int*>(value);
     else
         throw std::runtime_error("Object is not a integer!");
 }
@@ -143,7 +143,7 @@ int Object::get_int()
 double Object::get_double()
 {
     if (type == DataType::DOUBLE)
-        return *(double*)value;
+        return *static_cast<double*>(value);
     else
         throw std::runtime_error("Object is not a double!");
 }
@@ -151,17 +151,33 @@ double Object::get_double()
 std::string Object::get_str()
 {
     if (type == DataType::STRING)
-        return *(std::string*)value;
+        return *static_cast<std::string*>(value);
     else
         throw std::runtime_error("Object is not a string!");
 }
 
-std::vector<Object> Object::get_array()
+std::vector<Object>& Object::get_array()
 {
     if (type == DataType::STRING)
-        return *(std::vector<Object>*)value;
+        return *static_cast<std::vector<Object>*>(value);
     else
         throw std::runtime_error("Object is not a string!");
+}
+
+Class& Object::get_class()
+{
+    if (type == DataType::CLASS)
+        return *static_cast<Class*>(value);
+    else
+        throw std::runtime_error("Object is not a class!");
+}
+
+Function& Object::get_function()
+{
+    if (type == DataType::CLASS)
+        return *static_cast<Function*>(value);
+    else
+        throw std::runtime_error("Object is not a class!");
 }
 
 /**

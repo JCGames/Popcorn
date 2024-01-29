@@ -49,6 +49,8 @@ namespace popcorn::lexer
         POWER,
         BREAK,
         DOT,
+        OPEN_SQUARE_BRACKET,
+        CLOSED_SQUARE_BRACKET
     };
 
     std::string get_token_type_name(TokenType type);

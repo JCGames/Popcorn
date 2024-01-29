@@ -28,6 +28,10 @@ namespace popcorn::runner
         _NULL
     };
 
+    struct Function;
+    struct Variable;
+    struct Class;
+
     class Object
     {
         DataType type;
@@ -51,7 +55,10 @@ namespace popcorn::runner
             int get_int();
             double get_double();
             std::string get_str();
-            std::vector<Object> get_array();
+            std::vector<Object>& get_array();
+            Class& get_class();
+            Function& get_function();
+            DataType get_type();
 
             /**
              * Casting functions
@@ -61,7 +68,6 @@ namespace popcorn::runner
             Object cast_to_int();
             Object cast_to_double();
             Object cast_to_string();
-            DataType get_type();
 
             /**
              * Operations
@@ -100,20 +106,17 @@ namespace popcorn::runner
         }
     };
 
-    struct Array
+    struct Variable
     {
-        Object* array;
+        std::string name;
+        Object value;
+    };
 
-        Array(int count)
-        {
-            array = new Object[count];
-        }
-
-        ~Array()
-        {
-            if (array != nullptr)
-                delete[] array;
-        }
+    struct Class
+    {
+        std::string name;
+        std::vector<std::pair<std::string, Object>> variableMembers;
+        std::vector<std::pair<std::string, Function>> functionMembers;
     };
 }
 

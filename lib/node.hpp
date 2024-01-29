@@ -48,6 +48,7 @@ namespace popcorn::parser
         POWER_OPERATOR,
         BREAK,
         MEMBER_ACCESSOR,
+        ARRAY,
     };
 
     std::string get_node_type_name(NodeType type);
@@ -123,11 +124,14 @@ namespace popcorn::parser
 
     struct VariableAssignment_S
     {
-        std::string variableName;
+        Node* variable;
         Node* expression;
 
         ~VariableAssignment_S()
         {
+            if (variable != nullptr)
+                delete variable;
+
             if (expression != nullptr)
                 delete expression;
         }
@@ -253,6 +257,20 @@ namespace popcorn::parser
             
             if (_class != nullptr)
                 delete _class;
+        }
+    };
+
+    struct Array_S
+    {
+        std::vector<Node*> expressions;
+
+        ~Array_S()
+        {
+            for (auto expression : expressions)
+            {
+                if (expression != nullptr)
+                    delete expression;
+            }
         }
     };
 }

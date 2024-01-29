@@ -285,10 +285,15 @@ Node* Parser::parse_factor()
         if (_currentToken.type != TokenType::CLOSE_PARAN)
             throw std::runtime_error("Missing a closed paranthesis on line: " + std::to_string(_currentToken.lineNumber));
     }
-    // IS VARIABLE MEMBER ACCESSOR
+    // VARIABLE MEMBER ACCESSOR
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::DOT)
     {
         result = parse_member_accessor(nullptr);
+    }
+    // VARIABLE ARRAY ACCESSOR
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::OPEN_SQUARE_BRACKET)
+    {
+        result = parse_array_accessor(nullptr);
     }
     // FUNCTION CALLS
     else if (is_function_call())
@@ -342,6 +347,11 @@ Node* Parser::parse_factor()
     {
         result = new Node(NodeType::BOOLEAN, _currentToken.lineNumber, new bool(_currentToken.value == "true" ? true : false));
     }
+    // ARRAY
+    else if (_currentToken.type == TokenType::OPEN_SQUARE_BRACKET)
+    {
+        result = parse_array();
+    }
     // ERROR
     else
     {
@@ -355,6 +365,75 @@ Node* Parser::parse_factor()
 /**
  * Statements
 */
+
+/// @brief Can be called by parse_next_statement or by parse_function_call or by parse_member_accessor or by parse_factor.
+Node* Parser::parse_array_accessor(Node* lastNode)
+{
+    Node* result = new Node(NodeType::MEMBER_ACCESSOR, _currentToken.lineNumber, new MemberAccessor_S());
+    auto memberAccessorPtr = result->get_struct<MemberAccessor_S>();
+
+    if (lastNode != nullptr)
+        memberAccessorPtr->_class = lastNode;
+    else
+        memberAccessorPtr->_class = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
+
+    move_next_non_wspace(); // move to open sqaure bracket
+    move_next_non_wspace(); // move inside open square bracket
+
+    Node* expression = parse_expression();
+
+    if (_currentToken.type != TokenType::CLOSED_SQUARE_BRACKET)
+        Diagnostics::log_error("Missing a closed square bracket ]");
+    
+    Node* getMember = new Node(NodeType::FUNCTION_CALL, _currentToken.lineNumber, new FunctionCall_S());
+    auto funcCallPtr = getMember->get_struct<FunctionCall_S>();
+    funcCallPtr->functionName = "get";
+    funcCallPtr->paramValues.push_back(expression);
+
+    if (peek_next_non_wspace_pass_eols().type == TokenType::DOT)
+    {
+        memberAccessorPtr->member = parse_member_accessor(getMember);
+    }
+    else if (peek_next_non_wspace_pass_eols().type == TokenType::OPEN_SQUARE_BRACKET)
+    {
+        memberAccessorPtr->member = parse_array_accessor(getMember);
+    }
+    else
+    {
+        memberAccessorPtr->member = getMember;
+    }
+    
+    return result;
+}
+
+/// @brief Should start with a [
+Node* Parser::parse_array()
+{
+    Node* array = new Node(NodeType::ARRAY, _currentToken.lineNumber, new Array_S());
+
+    move_next_non_wspace();
+
+    while (_currentToken.type != TokenType::CLOSED_SQUARE_BRACKET && _currentToken.type != TokenType::END_OF_FILE)
+    {
+        auto* expression = parse_expression();
+
+        if (expression != nullptr)
+            array->get_struct<Array_S>()->expressions.push_back(expression);
+
+        if (_currentToken.type == TokenType::COMMA && peek_next_non_wspace().type != TokenType::CLOSED_SQUARE_BRACKET)
+        {
+            move_next_non_wspace();
+            continue;
+        }
+
+        break;
+    }
+
+    if (_currentToken.type != TokenType::CLOSED_SQUARE_BRACKET)
+        Diagnostics::log_error("Missing closed square bracket ]");
+
+    return array;
+}
 
 Node* Parser::parse_if()
 {
@@ -408,23 +487,19 @@ Node* Parser::parse_else()
     return _else;
 }
 
-Node* Parser::parse_member_accessor(Node* functionCall)
+/// @brief Can be called by parse_next_statement or by parse_function_call or by parse_array_accessor or by parse_factor.
+Node* Parser::parse_member_accessor(Node* lastNode)
 {
     Node* result = new Node(NodeType::MEMBER_ACCESSOR, _currentToken.lineNumber, new MemberAccessor_S());
     auto memberAccessorPtr = result->get_struct<MemberAccessor_S>();
 
-    if (functionCall != nullptr)
-    {
-        memberAccessorPtr->_class = functionCall;
-        move_next_non_wspace_pass_eols(); // move to member accessor
-        move_next_non_wspace_pass_eols(); // move to right side of the member accessor
-    }
+    if (lastNode != nullptr)
+        memberAccessorPtr->_class = lastNode;
     else
-    {
         memberAccessorPtr->_class = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
-        move_next_non_wspace_pass_eols(); // move to member accessor
-        move_next_non_wspace_pass_eols(); // move to right side of the member accessor
-    }
+        
+    move_next_non_wspace_pass_eols(); // move to member accessor
+    move_next_non_wspace_pass_eols(); // move to right side of the member accessor
 
     if (is_function_call())
     {
@@ -435,6 +510,10 @@ Node* Parser::parse_member_accessor(Node* functionCall)
         if (peek_next_non_wspace_pass_eols().type == TokenType::DOT)
         {
             memberAccessorPtr->member = parse_member_accessor(nullptr);
+        }
+        else if (peek_next_non_wspace_pass_eols().type == TokenType::OPEN_SQUARE_BRACKET)
+        {
+            memberAccessorPtr->member = parse_array_accessor(nullptr);
         }
         else
         {
@@ -449,7 +528,7 @@ Node* Parser::parse_member_accessor(Node* functionCall)
     return result;
 }
 
-/// @brief Ends on the closed parathesis of the function call.
+/// @brief Ends on the closed parathesis of the function call. Could also return a member accessor.
 Node* Parser::parse_function_call()
 {
     auto* fc = new Node(NodeType::FUNCTION_CALL, _currentToken.lineNumber, new FunctionCall_S());
@@ -483,8 +562,11 @@ Node* Parser::parse_function_call()
             Diagnostics::log_error("Missing a closed parenthesis ).");
     }
 
+    // if the function has a member accessor
     if (peek_next_non_wspace_pass_eols().type == TokenType::DOT)
         return parse_member_accessor(fc);
+    else if (peek_next_non_wspace_pass_eols().type == TokenType::OPEN_SQUARE_BRACKET)
+        return parse_array_accessor(fc);
 
     return fc;
 }
@@ -597,18 +679,61 @@ Node* Parser::parse_next_statement()
     // COMMENTS
     if (_currentToken.type == TokenType::COMMENT)
     {
-        int nextLine = _currentToken.lineNumber + 1;
-
-        while (peek_next().lineNumber < nextLine && _currentToken.type != TokenType::END_OF_FILE)
+        while (_currentToken.type != TokenType::END_OF_LINE && _currentToken.type != TokenType::END_OF_FILE)
             move_next();
 
         return nullptr;
     }
-    // MEMBER ACCESSOR
+    // VARIABLE MEMBER ACCESSOR
     else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::DOT)
     {
         Node* result = parse_member_accessor(nullptr);
-        move_next_non_wspace();
+
+        if (peek_next_non_wspace().type == TokenType::ASSIGNMENT)
+        {
+            Node* va = new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S());
+            auto va_struct = va->get_struct<VariableAssignment_S>();
+            va_struct->variable = result;
+
+            move_next_non_wspace();
+            move_next_non_wspace();
+
+            va_struct->expression = parse_expression();
+
+            result = va;
+        }
+        else
+        {
+            move_next_non_wspace();
+        }
+
+        if (!is_end_of_statement())
+            Diagnostics::log_error("Invalid statement!");
+
+        return result;
+    }
+    // VARIABLE ARRAY ACCESSOR
+    else if (_currentToken.type == TokenType::WORD && peek_next_non_wspace_pass_eols().type == TokenType::OPEN_SQUARE_BRACKET)
+    {
+        Node* result = parse_array_accessor(nullptr);
+
+        if (peek_next_non_wspace().type == TokenType::ASSIGNMENT)
+        {
+            Node* va = new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S());
+            auto va_struct = va->get_struct<VariableAssignment_S>();
+            va_struct->variable = result;
+
+            move_next_non_wspace();
+            move_next_non_wspace();
+
+            va_struct->expression = parse_expression();
+
+            result = va;
+        }
+        else
+        {
+            move_next_non_wspace();
+        }
 
         if (!is_end_of_statement())
             Diagnostics::log_error("Invalid statement!");
@@ -620,7 +745,7 @@ Node* Parser::parse_next_statement()
     {
         Node* va = new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S());
         auto va_struct = va->get_struct<VariableAssignment_S>();
-        va_struct->variableName = _currentToken.value;
+        va_struct->variable = new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(_currentToken.value));
 
         move_next_non_wspace();
         move_next_non_wspace();
@@ -698,7 +823,7 @@ Node* Parser::parse_next_statement()
             Diagnostics::log_error("Variable increment was not properly formatted.");
 
         return new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S{
-            vn,
+            new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),
             new Node(NodeType::EXPRESSION, _currentToken.lineNumber, new Expression_S{
                 new Node(NodeType::ADD_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{
                     new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),
@@ -718,7 +843,7 @@ Node* Parser::parse_next_statement()
             Diagnostics::log_error("Variable decrement was not properly formatted.");
 
         return new Node(NodeType::VARIABLE_ASSIGNMENT, _currentToken.lineNumber, new VariableAssignment_S{
-            vn,
+            new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),
             new Node(NodeType::EXPRESSION, _currentToken.lineNumber, new Expression_S{
                 new Node(NodeType::SUB_OPERATOR, _currentToken.lineNumber, new BinaryOperator_S{
                     new Node(NodeType::VARIABLE, _currentToken.lineNumber, new std::string(vn)),

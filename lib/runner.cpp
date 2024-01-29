@@ -150,7 +150,7 @@ Object Runner::interpret(Node* node, Scope& scope)
         /**
          * Operators
         */
-       // Binary operators
+        // Binary operators
         case NodeType::ADD_OPERATOR:
             return interpret(node->get_struct<BinaryOperator_S>()->left, scope)
                 .add_to(interpret(node->get_struct<BinaryOperator_S>()->right, scope));
@@ -198,11 +198,11 @@ Object Runner::interpret(Node* node, Scope& scope)
         case NodeType::VARIABLE_ASSIGNMENT:
             {
                 auto* va_struct = node->get_struct<VariableAssignment_S>();
-
-                if (!scope.has_var(va_struct->variableName))
-                    scope.add_var(va_struct->variableName, interpret(va_struct->expression, scope));
+                
+                if (!scope.has_var(*va_struct->variable->get_struct<std::string>()))
+                    scope.add_var(*va_struct->variable->get_struct<std::string>(), interpret(va_struct->expression, scope));
                 else
-                    scope.get_var(va_struct->variableName) = interpret(va_struct->expression, scope);
+                    scope.get_var(*va_struct->variable->get_struct<std::string>()) = interpret(va_struct->expression, scope);
             }
             break;
 

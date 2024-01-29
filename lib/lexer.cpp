@@ -49,6 +49,8 @@ std::string popcorn::lexer::get_token_type_name(TokenType type)
         case TokenType::POWER: return "POWER";
         case TokenType::BREAK: return "BREAK";
         case TokenType::DOT: return "DOT";
+        case TokenType::OPEN_SQUARE_BRACKET: return "OPEN SQUARE BRACKET";
+        case TokenType::CLOSED_SQUARE_BRACKET: return "CLOSED SQUARE BRACKET";
         default: return "NONE";
     }
 }
@@ -328,6 +330,16 @@ Token Lexer::get_next_token()
     {
         get_next();
         return { TokenType::CLOSE_PARAN, "", _currentLineNumber, _currentColumnNumber };
+    }
+    else if (_current == '[')
+    {
+        get_next();
+        return { TokenType::OPEN_SQUARE_BRACKET, "", _currentLineNumber, _currentColumnNumber };
+    }
+    else if (_current == ']')
+    {
+        get_next();
+        return { TokenType::CLOSED_SQUARE_BRACKET, "", _currentLineNumber, _currentColumnNumber };
     }
     else if (_current == ',')
     {
