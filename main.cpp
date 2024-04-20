@@ -3,6 +3,12 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <memory>
+#include <cstring>
+
+bool DEBUG_MODE = false;
+
+#pragma region Boilerplate
 
 /**
  * This structure is used for saving the contents
@@ -71,7 +77,7 @@ public:
     */
     void add_warning(std::string message, std::string line, unsigned int lineColumn, unsigned int lineNumber)
     {
-        std::string warning = "WARNING (" + std::to_string(lineColumn) + ":" + std::to_string(lineNumber) + "): ";
+        std::string warning = "WARNING (" + std::to_string(lineNumber) + ":" + std::to_string(lineColumn) + "): ";
         std::string space = "";
 
         for (int i = 0; i < lineColumn; ++i)
@@ -86,7 +92,7 @@ public:
     */
     void add_error(std::string message, std::string line, unsigned int lineColumn, unsigned int lineNumber)
     {
-        std::string error = "ERROR (" + std::to_string(lineColumn) + ":" + std::to_string(lineNumber) + "): ";
+        std::string error = "ERROR (" + std::to_string(lineNumber) + ":" + std::to_string(lineColumn) + "): ";
         std::string space = "";
 
         for (int i = 0; i < lineColumn; ++i)
@@ -122,6 +128,10 @@ public:
     }
 };
 
+#pragma endregion
+
+#pragma region Tokenizer
+
 /**
  * Determines the type of token.
 */
@@ -139,6 +149,7 @@ enum class TokenType : char
     ASSIGNMENT,
     NUMBER,
     CHAR,
+    ERROR
 };
 
 /**
@@ -160,13 +171,14 @@ struct Token
     {
         this->value = value;
         this->type = type;
+        this->line = line;
         this->lineColumn = lineColumn;
         this->lineNumber = lineNumber;
     }
 
     void print_token()
     {
-        std::cout << "Value: |" << value << "| Type: |" << static_cast<int>(type) << "| Line Column: " << lineColumn << " Line Number: " << lineNumber << "\n"; 
+        std::cout << "Value: |" << value << "| Type: |" << static_cast<int>(type) << "| Line Column: " << lineColumn << " Line Number: " << lineNumber << " Line: " << line << "\n"; 
     }
 };
 
@@ -318,10 +330,377 @@ public:
         this->diagnostics = diagnostics;
         parse_lines();
     }
+
+    std::vector<Token>* get_tokens()
+    {
+        return &tokens;
+    }
 };
+
+#pragma endregion
+
+#pragma region Parser
+
+enum class StatementType
+{
+    VARIABLE,
+    NUMBER,
+    CHAR,
+    BLOCK,
+    ASSIGN,
+    ADD_OP,
+    SUB_OP,
+    MULT_OP,
+    DIV_OP,
+    MOD_OP,
+    ERROR,
+    EXP,
+};
+
+std::string statement_type_as_str(const StatementType& type)
+{
+    switch (type)
+    {
+    case StatementType::VARIABLE:
+        return "VARIABLE";
+    case StatementType::NUMBER:
+        return "NUMBER";
+    case StatementType::CHAR:
+        return "CHARACTER";
+    case StatementType::BLOCK:
+        return "BLOCK";
+    case StatementType::ASSIGN:
+        return "ASSIGNMENT";
+    case StatementType::ADD_OP:
+        return "ADD OPERATOR";
+    case StatementType::SUB_OP:
+        return "SUBTRACT OPERATOR";
+    case StatementType::MULT_OP:
+        return "MULTIPLY OPERATOR";
+    case StatementType::DIV_OP:
+        return "DIVIDE OPERATOR";
+    case StatementType::MOD_OP:
+        return "MODULUS OPERATOR";
+    case StatementType::ERROR:
+        return "ERROR";
+    case StatementType::EXP:
+        return "EXPRESSION";
+    }
+}
+
+#pragma region Data Structures for Statements
+
+struct StatementInfo { };
+
+struct SI_Assign : public StatementInfo
+{
+    std::string variableName;
+};
+
+struct SI_Number : public StatementInfo
+{
+    std::string number;
+};
+
+struct SI_Char : public StatementInfo
+{
+    std::string character;
+};
+
+#pragma endregion
+
+struct Statement
+{
+    std::shared_ptr<StatementInfo> info;
+    StatementType type;
+    std::vector<Statement> children;
+
+    Statement() { }
+
+    Statement(StatementType type)
+    {
+        this->type = type;
+    }
+};
+
+struct Parser
+{
+private:
+    std::vector<Token>* tokens;
+    Diagnostics* diagnostics;
+    Statement root;
+    unsigned int currentToken;
+
+    /**
+     * Checks to see if we are at the end of the token stream.
+    */
+    bool eof() const
+    {
+        return currentToken >= tokens->size() || tokens->at(currentToken).type == TokenType::_EOF;
+    }
+
+    /**
+     * Increments the current token index.
+    */
+    void move_next()
+    {
+        ++currentToken;
+    }
+
+    /**
+     * Gets the current token.
+     * Returns an ERROR token if failure.
+    */
+    Token get()
+    {
+        if (currentToken >= tokens->size())
+            return Token("ERROR", TokenType::ERROR, "", 0, 0);
+        return tokens->at(currentToken);
+    }
+
+    /**
+     * Gets the previous token.
+     * Returns an ERROR token if failure.
+    */
+    Token prev()
+    {
+        if (currentToken - 1 < 0 || currentToken - 1 >= tokens->size())
+            return Token("ERROR", TokenType::ERROR, "", 0, 0);
+        return tokens->at(currentToken - 1);
+    }
+
+    /**
+     * Gets the next token.
+     * Returns an ERROR token if failure.
+    */
+    Token next()
+    {
+        if (currentToken + 1 >= tokens->size())
+            return Token("ERROR", TokenType::ERROR, "", 0, 0);
+        return tokens->at(currentToken + 1);
+    }
+
+    /**
+     * Parses a single statement.
+    */
+    Statement parse_statement()
+    {
+        Statement result(StatementType::ERROR);
+
+        if (get().type == TokenType::WORD && next().type == TokenType::ASSIGNMENT)
+        {
+            std::shared_ptr<SI_Assign> siAssign = std::make_shared<SI_Assign>();
+            siAssign->variableName = get().value;
+
+            move_next();
+            move_next(); // skip the = sign
+
+            Statement expression = parse_expression();
+
+            result.children.push_back(expression);
+
+            result.info = siAssign;
+            result.type = StatementType::ASSIGN;
+        }
+
+        return result;
+    }
+
+    Statement parse_expression()
+    {
+        Statement expression(StatementType::EXP);
+        expression.children.push_back(parse_add_sub());
+        return expression;
+    }
+
+    Statement parse_add_sub()
+    {
+        Statement left = parse_mult_div_mod();
+
+        while (get().type == TokenType::PLUS || get().type == TokenType::SUB)
+        {
+            if (get().type == TokenType::PLUS)
+            {
+                move_next();
+                Statement newLeft;
+                newLeft.type = StatementType::ADD_OP;
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_mult_div_mod());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::SUB)
+            {
+                move_next();
+                Statement newLeft;
+                newLeft.type = StatementType::SUB_OP;
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_mult_div_mod());
+
+                left = newLeft;
+            }
+        }
+
+        return left;
+    }
+
+    Statement parse_mult_div_mod()
+    {
+        Statement left = parse_term();
+
+        while (get().type == TokenType::MULT || get().type == TokenType::DIV || get().type == TokenType::MOD)
+        {
+            if (get().type == TokenType::MULT)
+            {
+                move_next();
+                Statement newLeft;
+                newLeft.type = StatementType::MULT_OP;
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_term());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::DIV)
+            {
+                move_next();
+                Statement newLeft;
+                newLeft.type = StatementType::DIV_OP;
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_term());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::MOD)
+            {
+                move_next();
+                Statement newLeft;
+                newLeft.type = StatementType::MOD_OP;
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_term());
+
+                left = newLeft;
+            }
+        }
+
+        return left;
+    }
+
+    Statement parse_term()
+    {
+        Statement result(StatementType::ERROR);
+
+        if (get().type == TokenType::NUMBER)
+        {
+            std::shared_ptr<SI_Number> siNumber = std::make_shared<SI_Number>();
+            siNumber->number = get().value;
+            result.info = siNumber;
+            result.type = StatementType::NUMBER;
+        }
+        else if (get().type == TokenType::CHAR)
+        {
+            std::shared_ptr<SI_Char> siChar = std::make_shared<SI_Char>();
+            siChar->character = get().value;
+            result.info = siChar;
+            result.type == StatementType::CHAR;
+        }
+
+        if (result.type == StatementType::ERROR)
+            diagnostics->add_error("That is not a term!", get().line, get().lineColumn, get().lineNumber);
+
+        move_next();
+
+        return result;
+    }
+
+    /**
+     * Prints a single statement.
+    */
+    void print_statement(const Statement& statement, std::string padding)
+    {
+        std::string typeName = statement_type_as_str(statement.type);
+
+        std::cout << padding << typeName << std::endl;
+
+        switch (statement.type)
+        {
+        case StatementType::ASSIGN:
+            if (SI_Assign* siAssign = static_cast<SI_Assign*>(statement.info.get()))
+            {
+                std::cout << padding << "Variable Name: " << siAssign->variableName << std::endl;
+
+                for (auto& child : statement.children)
+                    print_statement(child, padding + "\t");
+            }
+            break;
+        case StatementType::NUMBER:
+            if (SI_Number* siNumber = static_cast<SI_Number*>(statement.info.get()))
+            {
+                std::cout << padding << "Value: " << siNumber->number << std::endl;
+            }
+            break;
+        case StatementType::CHAR:
+            if (SI_Char* siChar = static_cast<SI_Char*>(statement.info.get()))
+            {
+                std::cout << padding << "Value: " << siChar->character << std::endl;
+            }
+            break;
+        default:
+            for (auto& child : statement.children)
+                print_statement(child, padding + "\t");
+            break;
+        }
+    }
+
+public:
+    Parser() 
+    {
+        tokens = nullptr;
+    }
+
+    /**
+     * Parses all of the statements in a given list of tokens.
+    */
+    void parse_statements(std::vector<Token>* tokens, Diagnostics* diagnostics)
+    {
+        this->tokens = tokens;
+        this->diagnostics = diagnostics;
+        root.type = StatementType::BLOCK;
+        
+        for (currentToken = 0; currentToken < tokens->size(); ++currentToken)
+        {
+            Statement statement = parse_statement();
+
+            if (statement.type != StatementType::ERROR)
+                root.children.push_back(statement);
+        }
+    }
+
+    /**
+     * Prints the abstract syntax tree.
+    */
+    void print_ast()
+    {
+        print_statement(root, "");
+    }
+};
+
+#pragma endregion
 
 int main(int argc, char** argv)
 {
+    for (int i = 0; i < argc; ++i)
+    {
+        if (strcmp("-d", argv[i]) == 0)
+        {
+            DEBUG_MODE = true;
+        }
+    }
+
     File file;
     file.load_file("test");
 
@@ -330,9 +709,19 @@ int main(int argc, char** argv)
     Tokenizer tokenizer;
     tokenizer.parse_file(&file, &diagnostics);
 
-    tokenizer.print_tokens();
+    if (DEBUG_MODE)
+        tokenizer.print_tokens();
 
+    if (!diagnostics.has_errors())
+    {
+        Parser parser;
+        parser.parse_statements(tokenizer.get_tokens(), &diagnostics);
+
+        if (DEBUG_MODE)
+            parser.print_ast();
+    }
+
+    // diagnostics dump
     std::cout << std::endl;
-
     diagnostics.dump();
 }
