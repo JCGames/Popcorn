@@ -407,6 +407,11 @@ struct SI_Char : public StatementInfo
     std::string character;
 };
 
+struct SI_Variable : public StatementInfo
+{
+    std::string name;
+};
+
 #pragma endregion
 
 struct Statement
@@ -606,7 +611,14 @@ private:
             std::shared_ptr<SI_Char> siChar = std::make_shared<SI_Char>();
             siChar->character = get().value;
             result.info = siChar;
-            result.type == StatementType::CHAR;
+            result.type = StatementType::CHAR;
+        }
+        else if (get().type == TokenType::WORD)
+        {
+            std::shared_ptr<SI_Variable> siVariable = std::make_shared<SI_Variable>();
+            siVariable->name = get().value;
+            result.info = siVariable;
+            result.type = StatementType::VARIABLE;
         }
 
         if (result.type == StatementType::ERROR)
@@ -649,6 +661,12 @@ private:
                 std::cout << padding << "Value: " << siChar->character << std::endl;
             }
             break;
+        case StatementType::VARIABLE:
+            if (SI_Variable* siVariable = static_cast<SI_Variable*>(statement.info.get()))
+            {
+                std::cout << padding << "Value: " << siVariable->name << std::endl;
+            }
+            break;
         default:
             for (auto& child : statement.children)
                 print_statement(child, padding + "\t");
@@ -660,6 +678,11 @@ public:
     Parser() 
     {
         tokens = nullptr;
+    }
+
+    Statement* get_root()
+    {
+        return &root;
     }
 
     /**
@@ -691,6 +714,598 @@ public:
 
 #pragma endregion
 
+enum class ObjectType
+{
+    INT32,
+    FLOAT32,
+    CHAR,
+    NIL
+};
+
+struct Object
+{
+    ObjectType type;
+    std::shared_ptr<void> value;
+
+    void print()
+    {
+        if (type == ObjectType::INT32)
+        {
+            std::cout << "Result: " << *static_cast<int*>(value.get()) << std::endl;
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            std::cout << "Result: " << *static_cast<float*>(value.get()) << std::endl;
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            std::cout << "Result: " << *static_cast<char*>(value.get()) << std::endl;
+        }
+    }
+};
+
+struct StackAllocation
+{
+    std::string variableName;
+    Object value;
+};
+
+struct Scope
+{
+private:
+    Scope* parent;
+    std::vector<StackAllocation> stack;
+
+public:
+    Object get_obj(std::string variableName)
+    {
+        for (auto& sa : stack)
+        {
+            if (sa.variableName == variableName)
+                return sa.value;
+        }
+
+        if (parent != nullptr)
+        {
+            return parent->get_obj(variableName);
+        } 
+
+        Object nil;
+        nil.type == ObjectType::NIL;
+        return nil;
+    }
+
+    void set_obj(std::string variableName, Object value)
+    {
+        for (auto& sa : stack)
+        {
+            if (sa.variableName == variableName)
+            {
+                sa.value = value;
+                return;
+            }
+        }
+
+        StackAllocation sa;
+        sa.variableName = variableName;
+        sa.value = value;
+        stack.push_back(sa);
+    }
+
+    void delete_obj()
+    {
+        
+    }
+
+    void set_parent(Scope* parent)
+    {
+        this->parent = parent;
+    }
+
+    std::vector<StackAllocation>& get_stack()
+    {
+        return stack;
+    }
+};
+
+struct Runner 
+{
+private:
+    Statement* root;
+
+    void run_block(Scope* parentScope)
+    {
+        Scope currentScope;
+        currentScope.set_parent(parentScope);
+
+        for (auto& statement : root->children)
+        {
+            if (statement.type == StatementType::ASSIGN)
+            {
+                if (SI_Assign* siAssign = static_cast<SI_Assign*>(statement.info.get()))
+                {
+                    currentScope.set_obj(siAssign->variableName, eval_expression(statement.children[0]));
+                }
+            }
+        }
+
+        std::cout << "STACK:" << std::endl;
+        
+        for (auto& sa : currentScope.get_stack())
+        {
+            std::cout << "Variable Name: " << sa.variableName << std::endl;
+            sa.value.print();
+        }
+    }
+
+    Object eval_expression(const Statement& statement)
+    {
+        switch (statement.type)
+        {
+        case StatementType::EXP:
+            {
+                return eval_expression(statement.children[0]);
+            }
+            break;
+        case StatementType::NUMBER:
+            if (SI_Number* siNumber = static_cast<SI_Number*>(statement.info.get()))
+            {
+                Object number;
+                if (siNumber->number.find('.') > -1)
+                {
+                    // is float
+                    number.type = ObjectType::FLOAT32;
+                    number.value = std::make_shared<float>(std::stof(siNumber->number));
+                    return number;
+                }
+                else
+                {
+                    // is int
+                    number.type = ObjectType::INT32;
+                    number.value = std::make_shared<int>(std::stoi(siNumber->number));
+                    return number;
+                } 
+            }
+            break;
+        case StatementType::CHAR:
+            if (SI_Char* siChar = static_cast<SI_Char*>(statement.info.get()))
+            {
+                Object _char;
+                _char.type = ObjectType::CHAR;
+                _char.value = std::make_shared<char>(siChar->character[0]);
+                return _char;
+            }
+            break;
+        case StatementType::ADD_OP:
+            {
+                Object left = eval_expression(statement.children[0]);
+                Object right = eval_expression(statement.children[1]);
+
+                if (left.type == ObjectType::INT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) + *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<int*>(left.value.get()) + *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) + *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::FLOAT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) + *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) + *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) + *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::CHAR)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) + *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<char*>(left.value.get()) + *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) + *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+            }
+            break;
+        case StatementType::SUB_OP:
+            {
+                Object left = eval_expression(statement.children[0]);
+                Object right = eval_expression(statement.children[1]);
+
+                if (left.type == ObjectType::INT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) - *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<int*>(left.value.get()) - *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) - *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::FLOAT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) - *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) - *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) - *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::CHAR)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) - *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<char*>(left.value.get()) - *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) - *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+            }
+            break;
+        case StatementType::MULT_OP:
+            {
+                Object left = eval_expression(statement.children[0]);
+                Object right = eval_expression(statement.children[1]);
+
+                if (left.type == ObjectType::INT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) * *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<int*>(left.value.get()) * *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) * *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::FLOAT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) * *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) * *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) * *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::CHAR)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) * *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<char*>(left.value.get()) * *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) * *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+            }
+            break;
+        case StatementType::DIV_OP:
+            {
+                Object left = eval_expression(statement.children[0]);
+                Object right = eval_expression(statement.children[1]);
+
+                if (left.type == ObjectType::INT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) / *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<int*>(left.value.get()) / *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) / *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::FLOAT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) / *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) / *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(*static_cast<float*>(left.value.get()) / *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::CHAR)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) / *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(*static_cast<char*>(left.value.get()) / *static_cast<float*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) / *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+            }
+            break;
+        case StatementType::MOD_OP:
+            {
+                Object left = eval_expression(statement.children[0]);
+                Object right = eval_expression(statement.children[1]);
+
+                if (left.type == ObjectType::INT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) % *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(0);
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<int*>(left.value.get()) % *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::FLOAT32)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(0);
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(0);
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<float>(0);
+                        return number;
+                    }
+                }
+                else if (left.type == ObjectType::CHAR)
+                {
+                    if (right.type == ObjectType::INT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) % *static_cast<int*>(right.value.get()));
+                        return number;
+                    }
+                    else if (right.type == ObjectType::FLOAT32)
+                    {
+                        Object number;
+                        number.type = ObjectType::FLOAT32;
+                        number.value = std::make_shared<float>(0);
+                        return number;
+                    }
+                    else if (right.type == ObjectType::CHAR)
+                    {
+                        Object number;
+                        number.type = ObjectType::INT32;
+                        number.value = std::make_shared<int>(*static_cast<char*>(left.value.get()) % *static_cast<char*>(right.value.get()));
+                        return number;
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+public:
+    void run(Statement* root)
+    {
+        this->root = root;
+        run_block(nullptr);
+    }
+
+    void test1()
+    {
+        Statement add;
+        add.type = StatementType::ADD_OP;
+        
+        Statement left;
+        left.type = StatementType::NUMBER;
+        std::shared_ptr<SI_Number> leftIsNumber = std::make_shared<SI_Number>();
+        leftIsNumber->number = "10";
+        left.info = leftIsNumber;
+
+        Statement right;
+        right.type = StatementType::NUMBER;
+        std::shared_ptr<SI_Number> rightIsNumber = std::make_shared<SI_Number>();
+        rightIsNumber->number = "10";
+        right.info = rightIsNumber;
+
+        add.children.push_back(left);
+        add.children.push_back(right);
+
+        Object result = eval_expression(add);
+        result.print();
+    }
+};
+
 int main(int argc, char** argv)
 {
     for (int i = 0; i < argc; ++i)
@@ -702,7 +1317,7 @@ int main(int argc, char** argv)
     }
 
     File file;
-    file.load_file("test");
+    file.load_file("test.txt");
 
     Diagnostics diagnostics;
 
@@ -719,9 +1334,17 @@ int main(int argc, char** argv)
 
         if (DEBUG_MODE)
             parser.print_ast();
+
+        if (!diagnostics.has_errors())
+        {
+            Runner runner;
+            runner.run(parser.get_root());
+        }
     }
 
     // diagnostics dump
     std::cout << std::endl;
     diagnostics.dump();
+
+    return 0;
 }
