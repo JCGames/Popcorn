@@ -6,6 +6,10 @@
 #include <memory>
 #include <cstring>
 
+#define object_op(OBJECT_TYPE, LEFT_DATA_TYPE, OPERATOR, RIGHT_DATA_TYPE, OUTPUT_DATA_TYPE) type = ObjectType::OBJECT_TYPE; \
+    value = std::make_shared<OUTPUT_DATA_TYPE>(*static_cast<LEFT_DATA_TYPE*>(value.get()) OPERATOR *static_cast<RIGHT_DATA_TYPE*>(other.value.get())); \
+    return *this;
+
 bool DEBUG_MODE = false;
 
 #pragma region Boilerplate
@@ -152,6 +156,20 @@ enum class TokenType : char
     ERROR,
     OPEN_PARAN,
     CLOSE_PARAN,
+    OPEN_CURL,
+    CLOSE_CURL,
+    FUNC,
+    IF,
+    ELSE,
+    WHILE,
+    TRUE,
+    FALSE,
+    EQUALS,
+    NEQUALS,
+    GTHAN,
+    LTHAN,
+    GTHANE,
+    LTHANE,
 };
 
 /**
@@ -256,8 +274,36 @@ private:
 
             --lineColumn;
 
-            tokens.push_back(Token(value, TokenType::WORD, currentLine, lineColumn, lineNumber));
+            if (value == "func")
+            {
+                tokens.push_back(Token(value, TokenType::FUNC, currentLine, lineColumn, lineNumber));
+            }
+            else if (value == "if")
+            {
+                tokens.push_back(Token(value, TokenType::IF, currentLine, lineColumn, lineNumber));
+            }
+            else if (value == "else")
+            {
+                tokens.push_back(Token(value, TokenType::ELSE, currentLine, lineColumn, lineNumber));
+            }
+            else if (value == "while")
+            {
+                tokens.push_back(Token(value, TokenType::WHILE, currentLine, lineColumn, lineNumber));
+            }
+            else if (value == "true")
+            {
+                tokens.push_back(Token(value, TokenType::TRUE, currentLine, lineColumn, lineNumber));
+            }   
+            else if (value == "false")
+            {
+                tokens.push_back(Token(value, TokenType::FALSE, currentLine, lineColumn, lineNumber));
+            }
+            else
+            {
+                tokens.push_back(Token(value, TokenType::WORD, currentLine, lineColumn, lineNumber));
+            }
         }
+        // if is number
         else if (isdigit(get()) || (get() == '.' && isdigit(next())))
         {
             std::string value = "";
@@ -288,6 +334,36 @@ private:
                 diagnostics->add_error("Missing closing single quotes!", currentLine, lineColumn, lineNumber);
             
             tokens.push_back(Token(std::string(1, value), TokenType::CHAR, currentLine, lineColumn, lineNumber));
+        }
+        // two character operators
+        else if (get() == '=' && next() == '=')
+        {
+            tokens.push_back(Token("==", TokenType::EQUALS, currentLine, lineColumn, lineNumber));
+            ++lineColumn;
+        }
+        else if (get() == '!' && next() == '=')
+        {
+            tokens.push_back(Token("!=", TokenType::NEQUALS, currentLine, lineColumn, lineNumber));
+            ++lineColumn;
+        }
+        else if (get() == '>' && next() == '=')
+        {
+            tokens.push_back(Token(">=", TokenType::GTHANE, currentLine, lineColumn, lineNumber));
+            ++lineColumn;
+        }
+        else if (get() == '<' && next() == '=')
+        {
+            tokens.push_back(Token("<=", TokenType::LTHANE, currentLine, lineColumn, lineNumber));
+            ++lineColumn;
+        }
+        // one character operators
+        else if (get() == '>')
+        {
+            tokens.push_back(Token(">", TokenType::GTHAN, currentLine, lineColumn, lineNumber));
+        }
+        else if (get() == '<')
+        {
+            tokens.push_back(Token("<", TokenType::LTHAN, currentLine, lineColumn, lineNumber));
         }
         else if (get() == '+')
         {
@@ -325,6 +401,14 @@ private:
         {
             tokens.push_back(Token(")", TokenType::CLOSE_PARAN, currentLine, lineColumn, lineNumber));
         }
+        else if (get() == '{')
+        {
+            tokens.push_back(Token("{", TokenType::OPEN_CURL, currentLine, lineColumn, lineNumber));
+        }
+        else if (get() == '}')
+        {
+            tokens.push_back(Token("}", TokenType::CLOSE_CURL, currentLine, lineColumn, lineNumber));
+        }
     }
 
 public:
@@ -351,6 +435,9 @@ public:
 
 #pragma region Parser
 
+/**
+ * The type of statement.
+*/
 enum class StatementType
 {
     VARIABLE,
@@ -365,8 +452,18 @@ enum class StatementType
     MOD_OP,
     ERROR,
     EXP,
+    EQUALS_OP,
+    NEQUALS_OP,
+    GTHANE_OP,
+    LTHANE_OP,
+    GTHAN_OP,
+    LTHAN_OP,
+    BOOLEAN,
 };
 
+/**
+ * Converts statement types into strings.
+*/
 std::string statement_type_as_str(const StatementType& type)
 {
     switch (type)
@@ -395,6 +492,20 @@ std::string statement_type_as_str(const StatementType& type)
         return "ERROR";
     case StatementType::EXP:
         return "EXPRESSION";
+    case StatementType::EQUALS_OP:
+        return "EQUALS";
+    case StatementType::NEQUALS_OP:
+        return "NOT EQUALS";
+    case StatementType::GTHANE_OP:
+        return "GREATER THAN OR EQUAL TO";
+    case StatementType::LTHANE_OP:
+        return "LESS THAN OR EQUAL TO";
+    case StatementType::GTHAN_OP:
+        return "GREATER THAN";
+    case StatementType::LTHAN_OP:
+        return "LESS THAN";
+    case StatementType::BOOLEAN:
+        return "BOOLEAN";
     }
 
     return "NOT A TYPE";
@@ -424,8 +535,16 @@ struct SI_Variable : public StatementInfo
     std::string name;
 };
 
+struct SI_Boolean : public StatementInfo
+{
+    bool value;
+};
+
 #pragma endregion
 
+/**
+ * A coded statement.
+*/
 struct Statement
 {
     std::shared_ptr<StatementInfo> info;
@@ -446,6 +565,10 @@ struct Statement
     }
 };
 
+/**
+ * The parser takes a list of tokens and turns 
+ * them into statements.
+*/
 struct Parser
 {
 private:
@@ -527,6 +650,18 @@ private:
 
             --currentToken;
         }
+        else if (get().type == TokenType::IF)
+        {
+
+        }
+        else if (get().type == TokenType::ELSE)
+        {
+            
+        }
+        else if (get().type == TokenType::WHILE)
+        {
+            
+        }
         else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
         {
             diagnostics->add_error("Bad statement!", get().line, get().lineColumn, get().lineNumber);
@@ -538,8 +673,84 @@ private:
     Statement parse_expression()
     {
         Statement expression(StatementType::EXP, get().line, get().lineColumn, get().lineNumber);
-        expression.children.push_back(parse_add_sub());
+        expression.children.push_back(parse_boolean_operators());
         return expression;
+    }
+
+    Statement parse_boolean_operators()
+    {
+        Statement left = parse_add_sub();
+
+        while (get().type == TokenType::EQUALS || 
+            get().type == TokenType::NEQUALS ||
+            get().type == TokenType::GTHANE ||
+            get().type == TokenType::LTHANE ||
+            get().type == TokenType::GTHAN ||
+            get().type == TokenType::LTHAN)
+        {
+            if (get().type == TokenType::EQUALS)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::NEQUALS)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::GTHANE)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::LTHANE)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::GTHAN)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+            else if (get().type == TokenType::LTHAN)
+            {
+                move_next();
+                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+
+                newLeft.children.push_back(left);
+                newLeft.children.push_back(parse_add_sub());
+
+                left = newLeft;
+            }
+        }
+
+        return left;
     }
 
     Statement parse_add_sub()
@@ -650,6 +861,20 @@ private:
             result.info = siVariable;
             result.type = StatementType::VARIABLE;
         }
+        else if (get().type == TokenType::TRUE)
+        {
+            std::shared_ptr<SI_Boolean> siBoolean = std::make_shared<SI_Boolean>();
+            siBoolean->value = true;
+            result.info = siBoolean;
+            result.type = StatementType::BOOLEAN;
+        }
+        else if (get().type == TokenType::FALSE)
+        {
+            std::shared_ptr<SI_Boolean> siBoolean = std::make_shared<SI_Boolean>();
+            siBoolean->value = false;
+            result.info = siBoolean;
+            result.type = StatementType::BOOLEAN;
+        }
 
         if (result.type == StatementType::ERROR)
             diagnostics->add_error("That is not a term!", get().line, get().lineColumn, get().lineNumber);
@@ -746,14 +971,21 @@ public:
 
 #pragma region Runner
 
+/**
+ * The type of object to store.
+*/
 enum class ObjectType
 {
     INT32,
     FLOAT32,
     CHAR,
-    NIL
+    NIL,
+    BOOL
 };
 
+/**
+ * An object that can represents many data types.
+*/
 struct Object
 {
     ObjectType type;
@@ -784,63 +1016,76 @@ struct Object
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) + *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, +, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<int*>(value.get()) + *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, int, +, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) + *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, +, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, int, +, int, int);
             }
         }
         else if (type == ObjectType::FLOAT32)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) + *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, +, int, float);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) + *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, +, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) + *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, +, char, float);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(FLOAT32, float, +, bool, float);
             }
         }
         else if (type == ObjectType::CHAR)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) + *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, +, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<char*>(value.get()) + *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, char, +, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) + *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, +, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, char, +, bool, int);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, bool, +, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(FLOAT32, bool, +, float, float);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, bool, +, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, bool, +, bool, int);
             }
         }
 
@@ -853,63 +1098,76 @@ struct Object
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) - *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, -, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<int*>(value.get()) - *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, int, -, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) - *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, -, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, int, -, int, int);
             }
         }
         else if (type == ObjectType::FLOAT32)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) - *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, -, int, float);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) - *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, -, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) - *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, -, char, float);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(FLOAT32, float, -, bool, float);
             }
         }
         else if (type == ObjectType::CHAR)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) - *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, -, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<char*>(value.get()) - *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, char, -, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) - *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, -, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, char, -, bool, int);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, bool, -, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(FLOAT32, bool, -, float, float);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, bool, -, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, bool, -, bool, int);
             }
         }
 
@@ -922,63 +1180,76 @@ struct Object
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) * *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, *, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<int*>(value.get()) * *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, int, *, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) * *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, *, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, int, *, int, int);
             }
         }
         else if (type == ObjectType::FLOAT32)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) * *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, *, int, float);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) * *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, *, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) * *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, *, char, float);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(FLOAT32, float, *, bool, float);
             }
         }
         else if (type == ObjectType::CHAR)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) * *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, *, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<char*>(value.get()) * *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, char, *, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) * *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, *, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, char, *, bool, int);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, bool, *, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(FLOAT32, bool, *, float, float);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, bool, *, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, bool, *, bool, int);
             }
         }
 
@@ -991,63 +1262,76 @@ struct Object
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) / *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, /, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<int*>(value.get()) / *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, int, /, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) / *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, /, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, int, /, int, int);
             }
         }
         else if (type == ObjectType::FLOAT32)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) / *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, /, int, float);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) / *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, /, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<float*>(value.get()) / *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, float, /, char, float);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(FLOAT32, float, /, bool, float);
             }
         }
         else if (type == ObjectType::CHAR)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) / *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, /, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                type = ObjectType::FLOAT32;
-                value = std::make_shared<float>(*static_cast<char*>(value.get()) / *static_cast<float*>(other.value.get()));
-                return *this;
+                object_op(FLOAT32, char, /, float, float);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) / *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, char, /, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, char, /, bool, int);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, bool, /, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(FLOAT32, bool, /, float, float);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, bool, /, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, bool, /, bool, int);
             }
         }
 
@@ -1060,9 +1344,7 @@ struct Object
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) % *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, %, int, int);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
@@ -1070,56 +1352,565 @@ struct Object
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<int*>(value.get()) % *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(INT32, int, %, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, int, %, bool, int);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            throw std::runtime_error("Unable to modulo two objects!");
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, char, %, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                throw std::runtime_error("Unable to modulo two objects!");
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, char, %, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, char, %, bool, int);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(INT32, bool, %, int, int);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                throw std::runtime_error("Unable to modulo two objects!");
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(INT32, bool, %, char, int);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(INT32, bool, %, bool, int);
+            }
+        }
+
+        throw std::runtime_error("Unable to modulo two objects!");
+    }
+
+    Object& operator==(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, ==, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, ==, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, ==, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, ==, int, bool);
             }
         }
         else if (type == ObjectType::FLOAT32)
         {
             if (other.type == ObjectType::INT32)
             {
-                throw std::runtime_error("Unable to modulo two objects!");
+                object_op(BOOL, float, ==, int, bool);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                throw std::runtime_error("Unable to modulo two objects!");
+                object_op(BOOL, float, ==, float, bool);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                throw std::runtime_error("Unable to modulo two objects!");
+                object_op(BOOL, float, ==, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, ==, bool, bool);
             }
         }
         else if (type == ObjectType::CHAR)
         {
             if (other.type == ObjectType::INT32)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) % *static_cast<int*>(other.value.get()));
-                return *this;
+                object_op(BOOL, char, ==, int, bool);
             }
             else if (other.type == ObjectType::FLOAT32)
             {
-                throw std::runtime_error("Unable to modulo two objects!");
+                object_op(BOOL, char, ==, float, bool);
             }
             else if (other.type == ObjectType::CHAR)
             {
-                type = ObjectType::INT32;
-                value = std::make_shared<int>(*static_cast<char*>(value.get()) % *static_cast<char*>(other.value.get()));
-                return *this;
+                object_op(BOOL, char, ==, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, ==, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, ==, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, ==, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, ==, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, ==, bool, bool);
             }
         }
 
-        throw std::runtime_error("Unable to modulo two objects!");
+        throw std::runtime_error("Unable to equals two objects!");
+    }
+
+    Object& operator!=(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, !=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, !=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, !=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, !=, int, bool);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, float, !=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, float, !=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, float, !=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, !=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, char, !=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, char, !=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, char, !=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, !=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, !=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, !=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, !=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, !=, bool, bool);
+            }
+        }
+
+        throw std::runtime_error("Unable to not equals two objects!");
+    }
+
+    Object& operator>=(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, >=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, >=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, >=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, >=, int, bool);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, float, >=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, float, >=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, float, >=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, >=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, char, >=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, char, >=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, char, >=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, >=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, >=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, >=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, >=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, >=, bool, bool);
+            }
+        }
+
+        throw std::runtime_error("Unable to greater than or equals two objects!");
+    }
+
+    Object& operator<=(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, <=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, <=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, <=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, <=, int, bool);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, float, <=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, float, <=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, float, <=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, <=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, char, <=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, char, <=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, char, <=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, <=, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, <=, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, <=, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, <=, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, <=, bool, bool);
+            }
+        }
+
+        throw std::runtime_error("Unable to less than or equals two objects!");
+    }
+
+    Object& operator>(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, >, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, >, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, >, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, >, int, bool);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, float, >, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, float, >, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, float, >, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, >, bool, bool);
+            }
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, char, >, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, char, >, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, char, >, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, >, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, >, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, >, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, >, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, >, bool, bool);
+            }
+        }
+
+        throw std::runtime_error("Unable to greather than two objects!");
+    }
+
+    Object& operator<(Object& other)
+    {
+        if (type == ObjectType::INT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, int, <, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, int, <, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, int, <, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, int, <, int, bool);
+            }
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, float, <, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, float, <, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, float, <, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, float, <, bool, bool);
+            }
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, char, <, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, char, <, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, char, <, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, char, <, bool, bool);
+            }
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                object_op(BOOL, bool, <, int, bool);
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                object_op(BOOL, bool, <, float, bool);
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                object_op(BOOL, bool, <, char, bool);
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                object_op(BOOL, bool, <, bool, bool);
+            }
+        }
+
+        throw std::runtime_error("Unable to less than two objects!");
     }
 };
 
+/**
+ * A structure basically made for stack variables.
+*/
 struct StackAllocation
 {
     std::string variableName;
     Object value;
 };
 
+/**
+ * A scope is exactly what it sounds like
+ * ... a scope.
+*/
 struct Scope
 {
 private:
@@ -1178,6 +1969,9 @@ public:
     }
 };
 
+/**
+ * Executes an abstract syntax tree.
+*/
 struct Runner 
 {
 private:
