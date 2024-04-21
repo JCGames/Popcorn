@@ -459,6 +459,10 @@ enum class StatementType
     GTHAN_OP,
     LTHAN_OP,
     BOOLEAN,
+    IF,
+    ELSE,
+    ELSEIF,
+    WHILE
 };
 
 /**
@@ -506,6 +510,14 @@ std::string statement_type_as_str(const StatementType& type)
         return "LESS THAN";
     case StatementType::BOOLEAN:
         return "BOOLEAN";
+    case StatementType::IF:
+        return "IF";
+    case StatementType::ELSE:
+        return "ELSE";
+    case StatementType::ELSEIF:
+        return "ELSE IF";
+    case StatementType::WHILE:
+        return "WHILE";
     }
 
     return "NOT A TYPE";
@@ -652,15 +664,64 @@ private:
         }
         else if (get().type == TokenType::IF)
         {
+            Statement _if(StatementType::IF, get().line, get().lineColumn, get().lineNumber);
 
+            move_next();
+
+            _if.children.push_back(parse_expression());
+
+            while (get().type == TokenType::EOL)
+                move_next();
+
+            _if.children.push_back(parse_block());
+
+            result = _if;
         }
         else if (get().type == TokenType::ELSE)
         {
-            
+            if (next().type == TokenType::IF)
+            {
+                Statement _elseif(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
+
+                move_next();
+
+                _elseif.children.push_back(parse_expression());
+
+                while (get().type == TokenType::EOL)
+                    move_next();
+
+                _elseif.children.push_back(parse_block());
+
+                result = _elseif;
+            }
+            else
+            {
+                Statement _else(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
+
+                move_next();
+
+                while (get().type == TokenType::EOL)
+                    move_next();
+
+                _else.children.push_back(parse_block());
+
+                result = _else;
+            }
         }
         else if (get().type == TokenType::WHILE)
         {
-            
+            Statement _while(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
+
+            move_next();
+
+            _while.children.push_back(parse_expression());
+
+            while (get().type == TokenType::EOL)
+                move_next();
+
+            _while.children.push_back(parse_block());
+
+            result = _while;
         }
         else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
         {
@@ -701,7 +762,7 @@ private:
             else if (get().type == TokenType::NEQUALS)
             {
                 move_next();
-                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+                Statement newLeft(StatementType::NEQUALS_OP, get().line, get().lineColumn, get().lineNumber);
 
                 newLeft.children.push_back(left);
                 newLeft.children.push_back(parse_add_sub());
@@ -711,7 +772,7 @@ private:
             else if (get().type == TokenType::GTHANE)
             {
                 move_next();
-                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+                Statement newLeft(StatementType::GTHANE_OP, get().line, get().lineColumn, get().lineNumber);
 
                 newLeft.children.push_back(left);
                 newLeft.children.push_back(parse_add_sub());
@@ -721,7 +782,7 @@ private:
             else if (get().type == TokenType::LTHANE)
             {
                 move_next();
-                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+                Statement newLeft(StatementType::LTHANE_OP, get().line, get().lineColumn, get().lineNumber);
 
                 newLeft.children.push_back(left);
                 newLeft.children.push_back(parse_add_sub());
@@ -731,7 +792,7 @@ private:
             else if (get().type == TokenType::GTHAN)
             {
                 move_next();
-                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+                Statement newLeft(StatementType::GTHAN_OP, get().line, get().lineColumn, get().lineNumber);
 
                 newLeft.children.push_back(left);
                 newLeft.children.push_back(parse_add_sub());
@@ -741,7 +802,7 @@ private:
             else if (get().type == TokenType::LTHAN)
             {
                 move_next();
-                Statement newLeft(StatementType::EQUALS_OP, get().line, get().lineColumn, get().lineNumber);
+                Statement newLeft(StatementType::LTHAN_OP, get().line, get().lineColumn, get().lineNumber);
 
                 newLeft.children.push_back(left);
                 newLeft.children.push_back(parse_add_sub());
@@ -884,6 +945,31 @@ private:
         return result;
     }
 
+    Statement parse_block()
+    {
+        if (get().type != TokenType::OPEN_CURL)
+            diagnostics->add_error("Missing { for block!", get().line, get().lineColumn, get().lineNumber);
+
+        Statement block(StatementType::BLOCK, get().line, get().lineColumn, get().lineNumber);
+        move_next();
+
+        while (!eof() && get().type != TokenType::CLOSE_CURL)
+        {
+            Statement statement = parse_statement();
+
+            if (statement.type != StatementType::ERROR)
+                block.children.push_back(statement);
+
+            move_next();
+        }
+
+        if (get().type != TokenType::CLOSE_CURL)
+            diagnostics->add_error("Missing } for block!", get().line, get().lineColumn, get().lineNumber);
+
+        move_next();
+        return block;
+    }
+
     /**
      * Prints a single statement.
     */
@@ -921,6 +1007,16 @@ private:
             {
                 std::cout << padding << "Value: " << siVariable->name << std::endl;
             }
+            break;
+        case StatementType::BOOLEAN:
+            if (SI_Boolean* siBoolean = static_cast<SI_Boolean*>(statement.info.get()))
+            {
+                std::cout << padding << "Value: " << (siBoolean->value ? "true" : "false") << std::endl;
+            }
+            break;
+        case StatementType::BLOCK:
+            for (auto& child : statement.children)
+                print_statement(child, padding + "\t");
             break;
         default:
             for (auto& child : statement.children)
@@ -1007,6 +1103,11 @@ struct Object
         {
             std::cout << "Type: " << static_cast<int>(type) << "\n";
             std::cout << "Result: " << *static_cast<char*>(value.get()) << std::endl;
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            std::cout << "Type: " << static_cast<int>(type) << "\n";
+            std::cout << "Result: " << *static_cast<bool*>(value.get()) << std::endl;
         }
     }
 
@@ -1918,7 +2019,21 @@ private:
     std::vector<StackAllocation> stack;
 
 public:
-    Object get_obj(std::string variableName)
+    bool obj_exists_in_scope_history(const std::string& variableName)
+    {   
+        for (auto& sa : stack)
+        {
+            if (sa.variableName == variableName)
+            {
+                return true;
+            }
+        }
+
+        if (parent == nullptr) return false;
+        return parent->obj_exists_in_scope_history(variableName);
+    }
+
+    Object get_obj(const std::string& variableName)
     {
         for (auto& sa : stack)
         {
@@ -1936,21 +2051,28 @@ public:
         return nil;
     }
 
-    void set_obj(std::string variableName, Object value)
+    void set_obj(const std::string& variableName, Object value)
     {
-        for (auto& sa : stack)
+        if (obj_exists_in_scope_history(variableName))
         {
-            if (sa.variableName == variableName)
+            for (auto& sa : stack)
             {
-                sa.value = value;
-                return;
+                if (sa.variableName == variableName)
+                {
+                    sa.value = value;
+                    return;
+                }
             }
-        }
 
-        StackAllocation sa;
-        sa.variableName = variableName;
-        sa.value = value;
-        stack.push_back(sa);
+            parent->set_obj(variableName, value);
+        }
+        else
+        {
+            StackAllocation sa;
+            sa.variableName = variableName;
+            sa.value = value;
+            stack.push_back(sa);
+        }
     }
 
     void delete_obj()
@@ -2017,6 +2139,31 @@ private:
                 }
             }
         }
+        else if (statement.type == StatementType::IF)
+        {
+            Object condition = eval_expression(statement.children[0], scope);
+
+            Scope ifScope;
+            ifScope.set_parent(&scope);
+
+            if (*static_cast<bool*>(condition.value.get()))
+            {
+                run_block(statement.children[1], &ifScope);
+            }
+        }
+        else if (statement.type == StatementType::WHILE)
+        {
+            Object condition = eval_expression(statement.children[0], scope);
+
+            Scope whileScope;
+            whileScope.set_parent(&scope);
+
+            while (*static_cast<bool*>(condition.value.get()))
+            {
+                run_block(statement.children[1], &whileScope);
+                condition = eval_expression(statement.children[0], scope);
+            }
+        }
         else
         {
             diagnostics->add_error("Bad statement!", statement.line, statement.lineColumn, statement.lineNumber);
@@ -2030,6 +2177,15 @@ private:
         case StatementType::EXP:
             {
                 return eval_expression(statement.children[0], scope);
+            }
+            break;
+        case StatementType::BOOLEAN:
+            if (SI_Boolean* siBoolean = static_cast<SI_Boolean*>(statement.info.get())) 
+            {
+                Object boolean;
+                boolean.type = ObjectType::BOOL;
+                boolean.value = std::make_shared<bool>(siBoolean->value);
+                return boolean;
             }
             break;
         case StatementType::VARIABLE:
@@ -2105,6 +2261,48 @@ private:
                 Object left = eval_expression(statement.children[0], scope);
                 Object right = eval_expression(statement.children[1], scope);
                 return left % right;
+            }
+            break;
+        case StatementType::EQUALS_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left == right;
+            }
+            break;
+        case StatementType::NEQUALS_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left != right;
+            }
+            break;
+        case StatementType::GTHANE_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left >= right;
+            }
+            break;
+        case StatementType::LTHANE_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left <= right;
+            }
+            break;
+        case StatementType::GTHAN_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left > right;
+            }
+            break;
+        case StatementType::LTHAN_OP:
+            {
+                Object left = eval_expression(statement.children[0], scope);
+                Object right = eval_expression(statement.children[1], scope);
+                return left < right;
             }
             break;
         }
