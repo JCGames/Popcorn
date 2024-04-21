@@ -149,7 +149,9 @@ enum class TokenType : char
     ASSIGNMENT,
     NUMBER,
     CHAR,
-    ERROR
+    ERROR,
+    OPEN_PARAN,
+    CLOSE_PARAN,
 };
 
 /**
@@ -314,6 +316,14 @@ private:
         else if (get() == '=')
         {
             tokens.push_back(Token("=", TokenType::ASSIGNMENT, currentLine, lineColumn, lineNumber));
+        }
+        else if (get() == '(')
+        {
+            tokens.push_back(Token("(", TokenType::OPEN_PARAN, currentLine, lineColumn, lineNumber));
+        }
+        else if (get() == ')')
+        {
+            tokens.push_back(Token(")", TokenType::CLOSE_PARAN, currentLine, lineColumn, lineNumber));
         }
     }
 
@@ -608,7 +618,18 @@ private:
     {
         Statement result(StatementType::ERROR, get().line, get().lineColumn, get().lineNumber);
 
-        if (get().type == TokenType::NUMBER)
+        if (get().type == TokenType::OPEN_PARAN)
+        {
+            move_next();
+            Statement expression = parse_expression();
+
+            if (get().type != TokenType::CLOSE_PARAN)
+                diagnostics->add_error("Missing a )!", get().line, get().lineColumn, get().lineNumber);
+
+            move_next();
+            return expression;
+        }
+        else if (get().type == TokenType::NUMBER)
         {
             std::shared_ptr<SI_Number> siNumber = std::make_shared<SI_Number>();
             siNumber->number = get().value;
