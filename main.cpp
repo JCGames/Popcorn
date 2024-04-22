@@ -11,6 +11,7 @@
     return *this;
 
 bool DEBUG_MODE = false;
+const std::string EMPTY_STRING = "";
 
 #pragma region Boilerplate
 
@@ -170,6 +171,7 @@ enum class TokenType : char
     LTHAN,
     GTHANE,
     LTHANE,
+    STRING
 };
 
 /**
@@ -261,10 +263,27 @@ private:
             skipLine = true;
             return;
         }
+        else if (get() == '"')
+        {
+            std::string value = EMPTY_STRING;
+
+            ++lineColumn;
+
+            while (!eol() && get() != '"')
+            {
+                value += get();
+                ++lineColumn;
+            }
+
+            if (get() != '"')
+                diagnostics->add_error("Missing \"!", currentLine, lineColumn, lineNumber);
+
+            tokens.push_back(Token(value, TokenType::STRING, currentLine, lineColumn, lineNumber));
+        }
         // if is word
         else if (isalpha(get()) || get() == '_')
         {
-            std::string value = "";
+            std::string value = EMPTY_STRING;
 
             while (!eol() && (isalnum(get()) || get() == '_'))
             {
@@ -306,7 +325,7 @@ private:
         // if is number
         else if (isdigit(get()) || (get() == '.' && isdigit(next())))
         {
-            std::string value = "";
+            std::string value = EMPTY_STRING;
             bool hasDecimalPoint = false;
 
             while (!eol() && (isdigit(get()) || get() == '.'))
@@ -422,6 +441,8 @@ public:
     {
         this->file = file;
         this->diagnostics = diagnostics;
+        lineColumn = 0;
+        lineNumber = 0;
         parse_lines();
     }
 
@@ -462,7 +483,8 @@ enum class StatementType
     IF,
     ELSE,
     ELSEIF,
-    WHILE
+    WHILE,
+    STRING
 };
 
 /**
@@ -527,24 +549,9 @@ std::string statement_type_as_str(const StatementType& type)
 
 struct StatementInfo { };
 
-struct SI_Assign : public StatementInfo
+struct SI_String : public StatementInfo
 {
-    std::string variableName;
-};
-
-struct SI_Number : public StatementInfo
-{
-    std::string number;
-};
-
-struct SI_Char : public StatementInfo
-{
-    std::string character;
-};
-
-struct SI_Variable : public StatementInfo
-{
-    std::string name;
+    std::string value;
 };
 
 struct SI_Boolean : public StatementInfo
@@ -647,8 +654,8 @@ private:
 
         if (get().type == TokenType::WORD && next().type == TokenType::ASSIGNMENT)
         {
-            std::shared_ptr<SI_Assign> siAssign = std::make_shared<SI_Assign>();
-            siAssign->variableName = get().value;
+            std::shared_ptr<SI_String> siAssign = std::make_shared<SI_String>();
+            siAssign->value = get().value;
 
             move_next();
             move_next(); // skip the = sign
@@ -664,49 +671,7 @@ private:
         }
         else if (get().type == TokenType::IF)
         {
-            Statement _if(StatementType::IF, get().line, get().lineColumn, get().lineNumber);
-
-            move_next();
-
-            _if.children.push_back(parse_expression());
-
-            while (get().type == TokenType::EOL)
-                move_next();
-
-            _if.children.push_back(parse_block());
-
-            result = _if;
-        }
-        else if (get().type == TokenType::ELSE)
-        {
-            if (next().type == TokenType::IF)
-            {
-                Statement _elseif(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
-
-                move_next();
-
-                _elseif.children.push_back(parse_expression());
-
-                while (get().type == TokenType::EOL)
-                    move_next();
-
-                _elseif.children.push_back(parse_block());
-
-                result = _elseif;
-            }
-            else
-            {
-                Statement _else(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
-
-                move_next();
-
-                while (get().type == TokenType::EOL)
-                    move_next();
-
-                _else.children.push_back(parse_block());
-
-                result = _else;
-            }
+            result = parse_if();
         }
         else if (get().type == TokenType::WHILE)
         {
@@ -729,6 +694,50 @@ private:
         }
 
         return result;
+    }
+
+    Statement parse_if()
+    {
+        Statement _if(StatementType::IF, get().line, get().lineColumn, get().lineNumber);
+
+        move_next();
+
+        _if.children.push_back(parse_expression());
+
+        while (get().type == TokenType::EOL)
+            move_next();
+
+        _if.children.push_back(parse_block());
+
+        while (get().type == TokenType::EOL)
+            move_next();
+
+        if (get().type == TokenType::ELSE && next().type == TokenType::IF)
+        {
+            move_next();
+
+            _if.children.push_back(parse_if());
+        }
+        else if (get().type == TokenType::ELSE)
+        {
+            _if.children.push_back(parse_else());
+        }
+
+        return _if;
+    }
+
+    Statement parse_else()
+    {
+        Statement _else(StatementType::ELSE, get().line, get().lineColumn, get().lineNumber);
+
+        move_next();
+
+        while (get().type == TokenType::EOL)
+            move_next();
+
+        _else.children.push_back(parse_block());
+
+        return _else;
     }
 
     Statement parse_expression()
@@ -903,23 +912,23 @@ private:
         }
         else if (get().type == TokenType::NUMBER)
         {
-            std::shared_ptr<SI_Number> siNumber = std::make_shared<SI_Number>();
-            siNumber->number = get().value;
-            result.info = siNumber;
+            std::shared_ptr<SI_String> siString = std::make_shared<SI_String>();
+            siString->value = get().value;
+            result.info = siString;
             result.type = StatementType::NUMBER;
         }
         else if (get().type == TokenType::CHAR)
         {
-            std::shared_ptr<SI_Char> siChar = std::make_shared<SI_Char>();
-            siChar->character = get().value;
-            result.info = siChar;
+            std::shared_ptr<SI_String> siString = std::make_shared<SI_String>();
+            siString->value = get().value;
+            result.info = siString;
             result.type = StatementType::CHAR;
         }
         else if (get().type == TokenType::WORD)
         {
-            std::shared_ptr<SI_Variable> siVariable = std::make_shared<SI_Variable>();
-            siVariable->name = get().value;
-            result.info = siVariable;
+            std::shared_ptr<SI_String> siString = std::make_shared<SI_String>();
+            siString->value = get().value;
+            result.info = siString;
             result.type = StatementType::VARIABLE;
         }
         else if (get().type == TokenType::TRUE)
@@ -935,6 +944,13 @@ private:
             siBoolean->value = false;
             result.info = siBoolean;
             result.type = StatementType::BOOLEAN;
+        }
+        else if (get().type == TokenType::STRING)
+        {
+            std::shared_ptr<SI_String> siString = std::make_shared<SI_String>();
+            siString->value = get().value;
+            result.info = siString;
+            result.type = StatementType::STRING;
         }
 
         if (result.type == StatementType::ERROR)
@@ -982,30 +998,30 @@ private:
         switch (statement.type)
         {
         case StatementType::ASSIGN:
-            if (SI_Assign* siAssign = static_cast<SI_Assign*>(statement.info.get()))
+            if (SI_String* siAssign = static_cast<SI_String*>(statement.info.get()))
             {
-                std::cout << padding << "Variable Name: " << siAssign->variableName << std::endl;
+                std::cout << padding << "Variable Name: " << siAssign->value << std::endl;
 
                 for (auto& child : statement.children)
                     print_statement(child, padding + "\t");
             }
             break;
         case StatementType::NUMBER:
-            if (SI_Number* siNumber = static_cast<SI_Number*>(statement.info.get()))
+            if (SI_String* siNumber = static_cast<SI_String*>(statement.info.get()))
             {
-                std::cout << padding << "Value: " << siNumber->number << std::endl;
+                std::cout << padding << "Value: " << siNumber->value << std::endl;
             }
             break;
         case StatementType::CHAR:
-            if (SI_Char* siChar = static_cast<SI_Char*>(statement.info.get()))
+            if (SI_String* siChar = static_cast<SI_String*>(statement.info.get()))
             {
-                std::cout << padding << "Value: " << siChar->character << std::endl;
+                std::cout << padding << "Value: " << siChar->value << std::endl;
             }
             break;
         case StatementType::VARIABLE:
-            if (SI_Variable* siVariable = static_cast<SI_Variable*>(statement.info.get()))
+            if (SI_String* siVariable = static_cast<SI_String*>(statement.info.get()))
             {
-                std::cout << padding << "Value: " << siVariable->name << std::endl;
+                std::cout << padding << "Value: " << siVariable->value << std::endl;
             }
             break;
         case StatementType::BOOLEAN:
@@ -1076,7 +1092,8 @@ enum class ObjectType
     FLOAT32,
     CHAR,
     NIL,
-    BOOL
+    BOOL,
+    STRING
 };
 
 /**
@@ -1109,6 +1126,11 @@ struct Object
             std::cout << "Type: " << static_cast<int>(type) << "\n";
             std::cout << "Result: " << *static_cast<bool*>(value.get()) << std::endl;
         }
+        else if (type == ObjectType::STRING)
+        {
+            std::cout << "Type: " << static_cast<int>(type) << "\n";
+            std::cout << "Result: " << *static_cast<std::string*>(value.get()) << std::endl;
+        }
     }
 
     Object& operator+(Object& other)
@@ -1131,6 +1153,12 @@ struct Object
             {
                 object_op(INT32, int, +, int, int);
             }
+            else if (other.type == ObjectType::STRING)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(std::to_string(*static_cast<int*>(value.get())) + *static_cast<std::string*>(other.value.get()));
+                return *this;
+            }
         }
         else if (type == ObjectType::FLOAT32)
         {
@@ -1149,6 +1177,12 @@ struct Object
             else if (other.type == ObjectType::BOOL)
             {
                 object_op(FLOAT32, float, +, bool, float);
+            }
+            else if (other.type == ObjectType::STRING)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(std::to_string(*static_cast<float*>(value.get())) + *static_cast<std::string*>(other.value.get()));
+                return *this;
             }
         }
         else if (type == ObjectType::CHAR)
@@ -1169,6 +1203,12 @@ struct Object
             {
                 object_op(INT32, char, +, bool, int);
             }
+            else if (other.type == ObjectType::STRING)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<char*>(value.get()) + *static_cast<std::string*>(other.value.get()));
+                return *this;
+            }
         }
         else if (type == ObjectType::BOOL)
         {
@@ -1187,6 +1227,45 @@ struct Object
             else if (other.type == ObjectType::BOOL)
             {
                 object_op(INT32, bool, +, bool, int);
+            }
+            else if (other.type == ObjectType::STRING)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(std::to_string(*static_cast<bool*>(value.get())) + *static_cast<std::string*>(other.value.get()));
+                return *this;
+            }
+        }
+        else if (type == ObjectType::STRING)
+        {
+            if (other.type == ObjectType::INT32)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<std::string*>(value.get()) + std::to_string(*static_cast<int*>(other.value.get())));
+                return *this;
+            }
+            else if (other.type == ObjectType::FLOAT32)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<std::string*>(value.get()) + std::to_string(*static_cast<float*>(other.value.get())));
+                return *this;
+            }
+            else if (other.type == ObjectType::CHAR)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<std::string*>(value.get()) + *static_cast<char*>(other.value.get()));
+                return *this;
+            }
+            else if (other.type == ObjectType::BOOL)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<std::string*>(value.get()) + std::to_string(*static_cast<bool*>(other.value.get())));
+                return *this;
+            }
+            else if (other.type == ObjectType::STRING)
+            {
+                type = ObjectType::STRING;
+                value = std::make_shared<std::string>(*static_cast<std::string*>(value.get()) + *static_cast<std::string*>(other.value.get()));
+                return *this;
             }
         }
 
@@ -2082,6 +2161,9 @@ public:
 
     void set_parent(Scope* parent)
     {
+        if (this == parent)
+            throw std::runtime_error("Trying to set a scopes parent to itself!");
+
         this->parent = parent;
     }
 
@@ -2126,11 +2208,11 @@ private:
     {
         if (statement.type == StatementType::ASSIGN)
         {
-            if (SI_Assign* siAssign = static_cast<SI_Assign*>(statement.info.get()))
+            if (SI_String* siAssign = static_cast<SI_String*>(statement.info.get()))
             {
                 try 
                 {
-                    scope.set_obj(siAssign->variableName, eval_expression(statement.children[0], scope));
+                    scope.set_obj(siAssign->value, eval_expression(statement.children[0], scope));
                 }
                 catch (const std::exception& exp)
                 {
@@ -2150,6 +2232,17 @@ private:
             {
                 run_block(statement.children[1], &ifScope);
             }
+            else if (statement.children.size() == 3)
+            {
+                run_statement(statement.children[2], scope);
+            }
+        }
+        else if (statement.type == StatementType::ELSE)
+        {
+            Scope elseScope;
+            elseScope.set_parent(&scope);
+
+            run_block(statement.children[0], &elseScope);
         }
         else if (statement.type == StatementType::WHILE)
         {
@@ -2179,6 +2272,15 @@ private:
                 return eval_expression(statement.children[0], scope);
             }
             break;
+        case StatementType::STRING:
+            if (SI_String* siString = static_cast<SI_String*>(statement.info.get()))
+            {
+                Object _string;
+                _string.type = ObjectType::STRING;
+                _string.value = std::make_shared<std::string>(siString->value);
+                return _string;
+            }
+            break;
         case StatementType::BOOLEAN:
             if (SI_Boolean* siBoolean = static_cast<SI_Boolean*>(statement.info.get())) 
             {
@@ -2189,23 +2291,23 @@ private:
             }
             break;
         case StatementType::VARIABLE:
-            if (SI_Variable* siVariable = static_cast<SI_Variable*>(statement.info.get()))
+            if (SI_String* siVariable = static_cast<SI_String*>(statement.info.get()))
             {
-                return scope.get_obj(siVariable->name);
+                return scope.get_obj(siVariable->value);
             }
             break;
         case StatementType::NUMBER:
-            if (SI_Number* siNumber = static_cast<SI_Number*>(statement.info.get()))
+            if (SI_String* siNumber = static_cast<SI_String*>(statement.info.get()))
             {
                 Object number;
                 
                 /**
                  * If the number is a floating point number.
                 */
-                if (siNumber->number.find('.') != std::string::npos)
+                if (siNumber->value.find('.') != std::string::npos)
                 {
                     number.type = ObjectType::FLOAT32;
-                    number.value = std::make_shared<float>(std::stof(siNumber->number));
+                    number.value = std::make_shared<float>(std::stof(siNumber->value));
                     return number;
                 }
                 /**
@@ -2214,17 +2316,17 @@ private:
                 else
                 {
                     number.type = ObjectType::INT32;
-                    number.value = std::make_shared<int>(std::stoi(siNumber->number));
+                    number.value = std::make_shared<int>(std::stoi(siNumber->value));
                     return number;
                 } 
             }
             break;
         case StatementType::CHAR:
-            if (SI_Char* siChar = static_cast<SI_Char*>(statement.info.get()))
+            if (SI_String* siChar = static_cast<SI_String*>(statement.info.get()))
             {
                 Object _char;
                 _char.type = ObjectType::CHAR;
-                _char.value = std::make_shared<char>(siChar->character[0]);
+                _char.value = std::make_shared<char>(siChar->value[0]);
                 return _char;
             }
             break;
@@ -2327,14 +2429,14 @@ public:
         
         Statement left;
         left.type = StatementType::NUMBER;
-        std::shared_ptr<SI_Number> leftIsNumber = std::make_shared<SI_Number>();
-        leftIsNumber->number = "10";
+        std::shared_ptr<SI_String> leftIsNumber = std::make_shared<SI_String>();
+        leftIsNumber->value = "10";
         left.info = leftIsNumber;
 
         Statement right;
         right.type = StatementType::NUMBER;
-        std::shared_ptr<SI_Number> rightIsNumber = std::make_shared<SI_Number>();
-        rightIsNumber->number = "10";
+        std::shared_ptr<SI_String> rightIsNumber = std::make_shared<SI_String>();
+        rightIsNumber->value = "10";
         right.info = rightIsNumber;
 
         add.children.push_back(left);
