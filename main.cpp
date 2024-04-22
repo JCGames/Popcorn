@@ -41,24 +41,30 @@ int main(int argc, char** argv)
     if (DEBUG_MODE)
         tokenizer.print_tokens();
 
-    if (!diagnostics.has_errors())
-    {
-        Parser parser;
-        parser.parse_statements(tokenizer.get_tokens(), &diagnostics);
+    // display diagnostics
+    if (diagnostics.has_errors() || diagnostics.has_warnings())
+        diagnostics.dump();
 
-        if (DEBUG_MODE)
-            parser.print_ast();
+    if (diagnostics.has_errors()) return 0;
 
-        if (!diagnostics.has_errors())
-        {
-            Runner runner;
-            runner.run(parser.get_root(), &diagnostics);
-        }
-    }
+    Parser parser;
+    parser.parse_statements(tokenizer.get_tokens(), &diagnostics);
 
-    // diagnostics dump
-    std::cout << std::endl;
-    diagnostics.dump();
+    if (DEBUG_MODE)
+        parser.print_ast();
+
+    // display diagnostics
+    if (diagnostics.has_errors() || diagnostics.has_warnings())
+        diagnostics.dump();
+
+    if (diagnostics.has_errors()) return 0;
+    
+    Runner runner;
+    runner.run(parser.get_root(), &diagnostics);
+
+    // display diagnostics
+    if (diagnostics.has_errors() || diagnostics.has_warnings())
+        diagnostics.dump();
 
     return 0;
 }
