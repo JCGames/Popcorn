@@ -758,7 +758,7 @@ private:
                 }
 
                 if (get().type != TokenType::CLOSE_PARAN)
-                    diagnostics->add_error("Missing )!", get().line, get().lineColumn, get().lineNumber);
+                    diagnostics->add_error("Missing a )!", get().line, get().lineColumn, get().lineNumber);
 
                 move_next();
             }
@@ -773,7 +773,32 @@ private:
         // function call
         else if (get().type == TokenType::WORD && next().type == TokenType::OPEN_PARAN)
         {
+            Statement functionCall(StatementType::FUNCTION_CALL, get().line, get().lineColumn, get().lineNumber);
+            std::shared_ptr<SI_String> siFunctionCall = std::make_shared<SI_String>();
+            functionCall.info = siFunctionCall;
+            siFunctionCall->value = get().value;
 
+            move_next();
+            move_next();
+
+            while (!eof() && get().type != TokenType::CLOSE_PARAN)
+            {
+                if (get().type == TokenType::COMMA)
+                    move_next();
+
+                functionCall.children.push_back(parse_expression());
+
+                if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
+                {
+                    diagnostics->add_error("Yeah, you can't do this. Bad.", get().line, get().lineColumn, get().lineNumber);
+                    break;
+                }
+            }
+
+            if (get().type != TokenType::CLOSE_PARAN)
+                diagnostics->add_error("Missing a )!", get().line, get().lineColumn, get().lineNumber);
+
+            result = functionCall;
         }
         else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
         {
@@ -1129,14 +1154,27 @@ private:
                 print_statement(child, padding + "\t");
             break;
         case StatementType::FUNCTION:
-            if (SI_Function* siBoolean = static_cast<SI_Function*>(statement.info.get()))
+            if (SI_Function* siFunction = static_cast<SI_Function*>(statement.info.get()))
             {
-                std::cout << padding << "Function Name: " << siBoolean->functionName << std::endl;
+                std::cout << padding << "Function Name: " << siFunction->functionName << std::endl;
                 std::cout << padding << "[" << std::endl;
-                for (auto& paramName : siBoolean->parameterNames)
+                for (auto& paramName : siFunction->parameterNames)
                     std::cout << padding << "\tParameter Name: " << paramName << "," << std::endl;
                 std::cout << padding << "]" << std::endl;
                 print_statement(statement.children[0], padding + '\t');
+            }
+            break;
+        case StatementType::FUNCTION_CALL:
+            if (SI_String* siFunctionCall = static_cast<SI_String*>(statement.info.get()))
+            {
+                std::cout << padding << "Function Name: " << siFunctionCall->value << std::endl;
+                std::cout << padding << "[" << std::endl;
+                for (auto& stmt : statement.children)
+                {
+                    print_statement(stmt, padding + '\t');
+                    std::cout << padding << "\t," << std::endl;
+                }
+                std::cout << padding << "]" << std::endl;
             }
             break;
         default:
@@ -2300,13 +2338,13 @@ private:
                 break;
         }
 
-        std::cout << "STACK:" << std::endl;
+        // std::cout << "STACK:" << std::endl;
         
-        for (auto& sa : currentScope.get_stack())
-        {
-            std::cout << "Variable Name: " << sa.variableName << std::endl;
-            sa.value.print();
-        }
+        // for (auto& sa : currentScope.get_stack())
+        // {
+        //     std::cout << "Variable Name: " << sa.variableName << std::endl;
+        //     sa.value.print();
+        // }
     }
 
     void run_statement(Statement& statement, Scope& scope)
@@ -2360,6 +2398,16 @@ private:
             {
                 run_block(statement.children[1], &whileScope);
                 condition = eval_expression(statement.children[0], scope);
+            }
+        }
+        else if (statement.type == StatementType::FUNCTION_CALL)
+        {
+            SI_String siFunctionCall = *static_cast<SI_String*>(statement.info.get());
+
+            if (siFunctionCall.value == "print")
+            {
+                if (statement.children.size() == 1)
+                    eval_expression(statement.children[0], scope).print();
             }
         }
         else

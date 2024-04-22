@@ -1,4 +1,1 @@
-func hello
-{
-    i = 0
-}
+print("Hello, world!")
