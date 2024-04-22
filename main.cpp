@@ -171,7 +171,8 @@ enum class TokenType : char
     LTHAN,
     GTHANE,
     LTHANE,
-    STRING
+    STRING,
+    COMMA
 };
 
 /**
@@ -428,6 +429,10 @@ private:
         {
             tokens.push_back(Token("}", TokenType::CLOSE_CURL, currentLine, lineColumn, lineNumber));
         }
+        else if (get() == ',')
+        {
+            tokens.push_back(Token(",", TokenType::COMMA, currentLine, lineColumn, lineNumber));
+        }
     }
 
 public:
@@ -484,7 +489,10 @@ enum class StatementType
     ELSE,
     ELSEIF,
     WHILE,
-    STRING
+    STRING,
+    NEGATE_OP,
+    FUNCTION,
+    FUNCTION_CALL
 };
 
 /**
@@ -540,6 +548,12 @@ std::string statement_type_as_str(const StatementType& type)
         return "ELSE IF";
     case StatementType::WHILE:
         return "WHILE";
+    case StatementType::NEGATE_OP:
+        return "NEGATE OPERATOR";
+    case StatementType::FUNCTION:
+        return "FUNCTION";
+    case StatementType::FUNCTION_CALL:
+        return "FUNCTION CALL";
     }
 
     return "NOT A TYPE";
@@ -548,6 +562,12 @@ std::string statement_type_as_str(const StatementType& type)
 #pragma region Data Structures for Statements
 
 struct StatementInfo { };
+
+struct SI_Function : public StatementInfo
+{
+    std::string functionName;
+    std::vector<std::string> parameterNames;
+};
 
 struct SI_String : public StatementInfo
 {
@@ -687,6 +707,73 @@ private:
             _while.children.push_back(parse_block());
 
             result = _while;
+        }
+        // function
+        else if (get().type == TokenType::FUNC)
+        {
+            Statement function(StatementType::FUNCTION, get().line, get().lineColumn, get().lineNumber);
+            std::shared_ptr<SI_Function> siFunction = std::make_shared<SI_Function>();
+            function.info = siFunction;
+
+            move_next();
+
+            if (get().type != TokenType::WORD)
+                diagnostics->add_error("Function name is not specified!", get().line, get().lineColumn, get().lineNumber);
+
+            siFunction->functionName = get().value;
+
+            move_next();
+
+            if (get().type == TokenType::OPEN_PARAN)
+            {
+                move_next();
+
+                while (!eof() && get().type != TokenType::CLOSE_PARAN)
+                {
+                    if (get().type == TokenType::COMMA)
+                    {
+                        if (next().type != TokenType::WORD)
+                        {
+                            diagnostics->add_error("Only an idiot would add a comma here!", get().line, get().lineColumn, get().lineNumber);
+                            break;
+                        }
+                        
+                        move_next();
+                    }
+
+                    if (get().type != TokenType::WORD)
+                    {
+                        diagnostics->add_error("That is not a valid parameter name!", get().line, get().lineColumn, get().lineNumber);
+                        break;
+                    }
+
+                    siFunction->parameterNames.push_back(get().value);
+                    move_next();
+
+                    if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
+                    {
+                        diagnostics->add_error("Yeah, you can't do this. Bad.", get().line, get().lineColumn, get().lineNumber);
+                        break;
+                    }
+                }
+
+                if (get().type != TokenType::CLOSE_PARAN)
+                    diagnostics->add_error("Missing )!", get().line, get().lineColumn, get().lineNumber);
+
+                move_next();
+            }
+
+            while (get().type == TokenType::EOL)
+                move_next();
+
+            function.children.push_back(parse_block());
+
+            result = function;
+        }
+        // function call
+        else if (get().type == TokenType::WORD && next().type == TokenType::OPEN_PARAN)
+        {
+
         }
         else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
         {
@@ -952,6 +1039,13 @@ private:
             result.info = siString;
             result.type = StatementType::STRING;
         }
+        else if (get().type == TokenType::SUB)
+        {
+            move_next();
+            result.type = StatementType::NEGATE_OP;
+            result.children.push_back(parse_term());
+            return result;
+        }
 
         if (result.type == StatementType::ERROR)
             diagnostics->add_error("That is not a term!", get().line, get().lineColumn, get().lineNumber);
@@ -1033,6 +1127,17 @@ private:
         case StatementType::BLOCK:
             for (auto& child : statement.children)
                 print_statement(child, padding + "\t");
+            break;
+        case StatementType::FUNCTION:
+            if (SI_Function* siBoolean = static_cast<SI_Function*>(statement.info.get()))
+            {
+                std::cout << padding << "Function Name: " << siBoolean->functionName << std::endl;
+                std::cout << padding << "[" << std::endl;
+                for (auto& paramName : siBoolean->parameterNames)
+                    std::cout << padding << "\tParameter Name: " << paramName << "," << std::endl;
+                std::cout << padding << "]" << std::endl;
+                print_statement(statement.children[0], padding + '\t');
+            }
             break;
         default:
             for (auto& child : statement.children)
@@ -2405,6 +2510,15 @@ private:
                 Object left = eval_expression(statement.children[0], scope);
                 Object right = eval_expression(statement.children[1], scope);
                 return left < right;
+            }
+            break;
+        case StatementType::NEGATE_OP:
+            {
+                Object result = eval_expression(statement.children[0], scope);
+                Object negativeOne;
+                negativeOne.type = ObjectType::INT32;
+                negativeOne.value = std::make_shared<int>(-1);
+                return negativeOne * result;
             }
             break;
         }
