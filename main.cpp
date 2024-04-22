@@ -1101,7 +1101,7 @@ private:
         if (get().type != TokenType::CLOSE_CURL)
             diagnostics->add_error("Missing } for block!", get().line, get().lineColumn, get().lineNumber);
 
-        move_next();
+        //move_next();
         return block;
     }
 
@@ -1273,6 +1273,33 @@ struct Object
         {
             std::cout << "Type: " << static_cast<int>(type) << "\n";
             std::cout << "Result: " << *static_cast<std::string*>(value.get()) << std::endl;
+        }
+    }
+
+    std::string to_string()
+    {
+        if (type == ObjectType::INT32)
+        {
+            return std::to_string(*static_cast<int*>(value.get()));
+        }
+        else if (type == ObjectType::FLOAT32)
+        {
+            return std::to_string(*static_cast<float*>(value.get()));
+        }
+        else if (type == ObjectType::CHAR)
+        {
+            return std::string(1, *static_cast<char*>(value.get()));
+        }
+        else if (type == ObjectType::BOOL)
+        {
+            if (*static_cast<bool*>(value.get()))
+                return "true";
+
+            return "false";
+        }
+        else if (type == ObjectType::STRING)
+        {
+            return *static_cast<std::string*>(value.get());
         }
     }
 
@@ -2407,7 +2434,7 @@ private:
             if (siFunctionCall.value == "print")
             {
                 if (statement.children.size() == 1)
-                    eval_expression(statement.children[0], scope).print();
+                    std::cout << eval_expression(statement.children[0], scope).to_string() << std::endl;
             }
         }
         else
