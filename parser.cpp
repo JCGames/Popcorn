@@ -200,6 +200,8 @@ Statement Parser::parse_if()
 
     _if.children.push_back(parse_block());
 
+    move_next();
+
     while (get().type == TokenType::EOL)
         move_next();
 
