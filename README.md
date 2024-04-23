@@ -80,7 +80,7 @@ You got your basic operations:
 // should also be able to negate number... i say should
 a = -1
 ```
-Also got your basic statements: (if it crashes with these i can't help, I'm probably doing to much study to listen to you ramble on about my trash bin of a language)
+Also got your basic statements: (if it crashes with these i can't help, I'm probably doing things too important to listen to you ramble on about my trash bin of a language)
 ```cpp
 if condition {
 
