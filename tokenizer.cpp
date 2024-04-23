@@ -254,4 +254,8 @@ void Tokenizer::parse_token()
     {
         tokens.push_back(Token(",", TokenType::COMMA, currentLine, lineColumn, lineNumber));
     }
+    else if (!iswspace(get()))
+    {
+        diagnostics->add_error("You really just popped my pried. Ok ok... so I haven't used all of the characters on the keyboard yet. so what?", currentLine, lineColumn, lineNumber);
+    }
 }

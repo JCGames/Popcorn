@@ -8,9 +8,9 @@
 
 #include "parser.hpp"
 
-#define RETURN_OP_RESULT(OBJECT_TYPE, LEFT_DATA_TYPE, OPERATOR, RIGHT_DATA_TYPE, OUTPUT_DATA_TYPE) type = ObjectType::OBJECT_TYPE; \
-    value = std::make_shared<OUTPUT_DATA_TYPE>(*static_cast<LEFT_DATA_TYPE*>(value.get()) OPERATOR *static_cast<RIGHT_DATA_TYPE*>(other.value.get())); \
-    return *this;
+#define CAST(value, type) static_cast<type>(value)
+#define CASTP(value, type) *static_cast<type*>(value)
+#define CASTS(value, type) *static_cast<type*>(value.get())
 
 namespace pop
 {
@@ -35,9 +35,16 @@ namespace pop
         ObjectType type;
         std::shared_ptr<void> value;
 
+        Object();
+        Object(ObjectType type, std::shared_ptr<void> value);
+
         void print();
 
-        std::string to_string();
+        Object to_int32();
+        Object to_float32();
+        Object to_char();
+        Object to_bool();
+        Object to_string();
 
         Object& operator+(Object& other);
         Object& operator-(Object& other);

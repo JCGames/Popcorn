@@ -189,6 +189,10 @@ namespace pop
         */
         Statement parse_statement();
 
+        Statement parse_function();
+
+        Statement parse_function_call();
+
         Statement parse_if();
 
         Statement parse_else();

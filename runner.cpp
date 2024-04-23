@@ -157,8 +157,15 @@ void Runner::run_statement(Statement& statement, Scope& scope)
 
         if (siFunctionCall.value == "print")
         {
-            if (statement.children.size() == 1)
-                std::cout << eval_expression(statement.children[0], scope).to_string() << std::endl;
+            try
+            {
+                if (statement.children.size() == 1)
+                    std::cout << *static_cast<std::string*>(eval_expression(statement.children[0], scope).to_string().value.get()) << std::endl;
+            }
+            catch (const std::exception& exp)
+            {
+                diagnostics->add_error("Could not print value!", statement.line, statement.lineColumn, statement.lineNumber);
+            }
         }
     }
     else
@@ -171,6 +178,38 @@ Object Runner::eval_expression(const Statement& statement, Scope& scope)
 {
     switch (statement.type)
     {
+    case StatementType::FUNCTION_CALL:
+        if (SI_String* siString = static_cast<SI_String*>(statement.info.get()))
+        {
+            try
+            {
+                if (siString->value == "int" && statement.children.size() == 1)
+                {
+                    return eval_expression(statement.children[0], scope).to_int32();
+                }
+                else if (siString->value == "float" && statement.children.size() == 1)
+                {
+                    return eval_expression(statement.children[0], scope).to_float32();
+                }
+                else if (siString->value == "bool" && statement.children.size() == 1)
+                {
+                    return eval_expression(statement.children[0], scope).to_bool();
+                }
+                else if (siString->value == "char" && statement.children.size() == 1)
+                {
+                    return eval_expression(statement.children[0], scope).to_char();
+                }
+                else if (siString->value == "str" && statement.children.size() == 1)
+                {
+                    return eval_expression(statement.children[0], scope).to_string();
+                }
+            }
+            catch (const std::exception& exp)
+            {
+                diagnostics->add_error("Could not cast value!", statement.line, statement.lineColumn, statement.lineNumber);
+            }
+        }
+        break;
     case StatementType::EXP:
         {
             return eval_expression(statement.children[0], scope);

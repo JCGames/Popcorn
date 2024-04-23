@@ -132,9 +132,6 @@ Statement Parser::parse_statement()
                 }
             }
 
-            if (get().type != TokenType::CLOSE_PARAN)
-                diagnostics->add_error("Missing a )!", get().line, get().lineColumn, get().lineNumber);
-
             move_next();
         }
 
@@ -148,32 +145,7 @@ Statement Parser::parse_statement()
     // function call
     else if (get().type == TokenType::WORD && next().type == TokenType::OPEN_PARAN)
     {
-        Statement functionCall(StatementType::FUNCTION_CALL, get().line, get().lineColumn, get().lineNumber);
-        std::shared_ptr<SI_String> siFunctionCall = std::make_shared<SI_String>();
-        functionCall.info = siFunctionCall;
-        siFunctionCall->value = get().value;
-
-        move_next();
-        move_next();
-
-        while (!eof() && get().type != TokenType::CLOSE_PARAN)
-        {
-            if (get().type == TokenType::COMMA)
-                move_next();
-
-            functionCall.children.push_back(parse_expression());
-
-            if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
-            {
-                diagnostics->add_error("Yeah, you can't do this. Bad.", get().line, get().lineColumn, get().lineNumber);
-                break;
-            }
-        }
-
-        if (get().type != TokenType::CLOSE_PARAN)
-            diagnostics->add_error("Missing a )!", get().line, get().lineColumn, get().lineNumber);
-
-        result = functionCall;
+        result = parse_function_call();
     }
     else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
     {
@@ -181,6 +153,38 @@ Statement Parser::parse_statement()
     }
 
     return result;
+}
+
+Statement Parser::parse_function()
+{
+
+}
+
+Statement Parser::parse_function_call()
+{
+    Statement functionCall(StatementType::FUNCTION_CALL, get().line, get().lineColumn, get().lineNumber);
+    std::shared_ptr<SI_String> siFunctionCall = std::make_shared<SI_String>();
+    functionCall.info = siFunctionCall;
+    siFunctionCall->value = get().value;
+
+    move_next();
+    move_next();
+
+    while (!eof() && get().type != TokenType::CLOSE_PARAN)
+    {
+        if (get().type == TokenType::COMMA)
+            move_next();
+
+        functionCall.children.push_back(parse_expression());
+
+        if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
+        {
+            diagnostics->add_error("Wow, that was fatal. Maybe you will be more careful next time?", get().line, get().lineColumn, get().lineNumber);
+            break;
+        }
+    }
+
+    return functionCall;
 }
 
 Statement Parser::parse_if()
@@ -410,6 +414,10 @@ Statement Parser::parse_term()
         siString->value = get().value;
         result.info = siString;
         result.type = StatementType::CHAR;
+    }
+    else if (get().type == TokenType::WORD && next().type == TokenType::OPEN_PARAN)
+    {
+        result = parse_function_call();
     }
     else if (get().type == TokenType::WORD)
     {
