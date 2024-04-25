@@ -47,6 +47,7 @@ namespace pop
         Object to_string();
 
         Object& operator+(Object& other);
+        Object& operator-();
         Object& operator-(Object& other);
         Object& operator*(Object& other);
         Object& operator/(Object& other);

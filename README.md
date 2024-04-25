@@ -37,6 +37,7 @@ a = 1 + int(1.0) // <- should work ... unsure
 
 // anyone wanna help me figure out why I can't do this though?
 a = int(-1.5) // <- for some reason this fails \_(*_*)_/
+// never mind ^ works now!
 ```
 The different casting functions are: (bad, maybe not though idk)
 ```cpp

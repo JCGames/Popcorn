@@ -215,6 +215,36 @@ Object& Object::operator+(Object& other)
     throw std::runtime_error("Unable to add two objects!");
 }
 
+Object& Object::operator-()
+{
+    if (type == ObjectType::INT32)
+    {
+        type = ObjectType::INT32;
+        value = std::make_shared<int>(-1 * CASTS(value, int));
+        return *this;
+    }
+    else if (type == ObjectType::FLOAT32)
+    {
+        type = ObjectType::FLOAT32;
+        value = std::make_shared<float>(-1 * CASTS(value, float));
+        return *this;
+    }
+    else if (type == ObjectType::CHAR)
+    {
+        type = ObjectType::INT32;
+        value = std::make_shared<int>(-1 * CASTS(value, char));
+        return *this;
+    }
+    else if (type == ObjectType::BOOL)
+    {
+        type = ObjectType::INT32;
+        value = std::make_shared<int>(-1 * CASTS(value, bool));
+        return *this;
+    }
+
+    throw std::runtime_error("Unable to negate object!");
+}
+
 Object& Object::operator-(Object& other)
 {
     if (type == other.type)

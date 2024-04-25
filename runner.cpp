@@ -206,7 +206,7 @@ Object Runner::eval_expression(const Statement& statement, Scope& scope)
             }
             catch (const std::exception& exp)
             {
-                diagnostics->add_error("Could not cast value!", statement.line, statement.lineColumn, statement.lineNumber);
+                diagnostics->add_error(exp.what(), statement.line, statement.lineColumn, statement.lineNumber);
             }
         }
         break;
@@ -353,10 +353,7 @@ Object Runner::eval_expression(const Statement& statement, Scope& scope)
     case StatementType::NEGATE_OP:
         {
             Object result = eval_expression(statement.children[0], scope);
-            Object negativeOne;
-            negativeOne.type = ObjectType::INT32;
-            negativeOne.value = std::make_shared<int>(-1);
-            return negativeOne * result;
+            return -result;
         }
         break;
     }
