@@ -8,8 +8,13 @@
 
 #include "parser.hpp"
 
+// Casts a non-pointer
 #define CAST(value, type) static_cast<type>(value)
+
+// Casts a pointer
 #define CASTP(value, type) *static_cast<type*>(value)
+
+// Casts a shared pointer
 #define CASTS(value, type) *static_cast<type*>(value.get())
 
 namespace pop

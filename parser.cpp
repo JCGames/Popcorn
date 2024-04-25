@@ -2,6 +2,8 @@
 
 using namespace pop;
 
+#pragma region Statement
+
 Statement::Statement() { }
 
 Statement::Statement(StatementType type, std::string line, unsigned int lineColumn, unsigned int lineNumber)
@@ -12,152 +14,194 @@ Statement::Statement(StatementType type, std::string line, unsigned int lineColu
     this->lineNumber = lineNumber;
 }
 
+#pragma endregion
+
+#pragma region Private Methods
+
+/**
+ * Returns true if the current token is an end of file token or if the index equals the token count.
+*/
 bool Parser::eof() const
 {
-    return currentToken >= tokens->size() || tokens->at(currentToken).type == TokenType::_EOF;
+    return index >= tokens->size() || tokens->at(index).type == TokenType::_EOF;
 }
 
+/**
+ * Moves to the next token.
+*/
 void Parser::move_next()
 {
-    ++currentToken;
+    ++index;
 }
 
+/**
+ * Moves to the previous token.
+*/
+void Parser::move_back()
+{
+    --index;
+}
+
+/**
+ * Looks at the current token.
+*/
 Token Parser::get()
 {
-    if (currentToken >= tokens->size())
+    if (index >= tokens->size())
         return Token("ERROR", TokenType::ERROR, "", 0, 0);
-    return tokens->at(currentToken);
+    return tokens->at(index);
 }
 
+/**
+ * Looks at the previous token.
+*/
 Token Parser::prev()
 {
-    if (currentToken - 1 < 0 || currentToken - 1 >= tokens->size())
+    if (index - 1 < 0 || index - 1 >= tokens->size())
         return Token("ERROR", TokenType::ERROR, "", 0, 0);
-    return tokens->at(currentToken - 1);
+    return tokens->at(index - 1);
 }
 
+/**
+ * Looks at the next token.
+*/
 Token Parser::next()
 {
-    if (currentToken + 1 >= tokens->size())
+    if (index + 1 >= tokens->size())
         return Token("ERROR", TokenType::ERROR, "", 0, 0);
-    return tokens->at(currentToken + 1);
+    return tokens->at(index + 1);
 }
 
-Statement Parser::parse_statement()
-{
-    Statement result(StatementType::ERROR, get().line, get().lineColumn, get().lineNumber);
+#pragma region Statements
 
+Statement Parser::parse_next_statement()
+{
+    // VARIABLE ASSIGNMENT
     if (get().type == TokenType::WORD && next().type == TokenType::ASSIGNMENT)
     {
+        Statement assignment(StatementType::ASSIGN, get().line, get().lineColumn, get().lineNumber);
         std::shared_ptr<SI_String> siAssign = std::make_shared<SI_String>();
-        siAssign->value = get().value;
+        assignment.info = siAssign;
+        
+        // set the variable name
+        siAssign->value = get().value; 
 
         move_next();
-        move_next(); // skip the = sign
+        move_next(); // skip the =
 
         Statement expression = parse_expression();
 
-        result.children.push_back(expression);
+        assignment.children.push_back(expression);
 
-        result.info = siAssign;
-        result.type = StatementType::ASSIGN;
+        --index;
 
-        --currentToken;
+        return assignment;
     }
+    // IF STATEMENT
     else if (get().type == TokenType::IF)
     {
-        result = parse_if();
+        return parse_if();
     }
+    // WHILE STATEMENT
     else if (get().type == TokenType::WHILE)
     {
-        Statement _while(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
-
-        move_next();
-
-        _while.children.push_back(parse_expression());
-
-        while (get().type == TokenType::EOL)
-            move_next();
-
-        _while.children.push_back(parse_block());
-
-        result = _while;
+        return parse_while();
     }
-    // function
+    // FUNCTION STATEMENT
     else if (get().type == TokenType::FUNC)
     {
-        Statement function(StatementType::FUNCTION, get().line, get().lineColumn, get().lineNumber);
-        std::shared_ptr<SI_Function> siFunction = std::make_shared<SI_Function>();
-        function.info = siFunction;
-
-        move_next();
-
-        if (get().type != TokenType::WORD)
-            diagnostics->add_error("Function name is not specified!", get().line, get().lineColumn, get().lineNumber);
-
-        siFunction->functionName = get().value;
-
-        move_next();
-
-        if (get().type == TokenType::OPEN_PARAN)
-        {
-            move_next();
-
-            while (!eof() && get().type != TokenType::CLOSE_PARAN)
-            {
-                if (get().type == TokenType::COMMA)
-                {
-                    if (next().type != TokenType::WORD)
-                    {
-                        diagnostics->add_error("Only an idiot would add a comma here!", get().line, get().lineColumn, get().lineNumber);
-                        break;
-                    }
-                    
-                    move_next();
-                }
-
-                if (get().type != TokenType::WORD)
-                {
-                    diagnostics->add_error("That is not a valid parameter name!", get().line, get().lineColumn, get().lineNumber);
-                    break;
-                }
-
-                siFunction->parameterNames.push_back(get().value);
-                move_next();
-
-                if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
-                {
-                    diagnostics->add_error("Yeah, you can't do this. Bad.", get().line, get().lineColumn, get().lineNumber);
-                    break;
-                }
-            }
-
-            move_next();
-        }
-
-        while (get().type == TokenType::EOL)
-            move_next();
-
-        function.children.push_back(parse_block());
-
-        result = function;
+        return parse_function();
     }
-    // function call
+    // FUNCTION CALL STATEMENT
     else if (get().type == TokenType::WORD && next().type == TokenType::OPEN_PARAN)
     {
-        result = parse_function_call();
+        return parse_function_call();
+    }
+    // RETURN STATEMENT
+    else if (get().type == TokenType::RETURN)
+    {
+        Statement statement(StatementType::RETURN, get().line, get().lineColumn, get().lineNumber);
+        move_next();
+        statement.children.push_back(parse_expression());
+        return statement;
+    }
+    // BREAK STATEMENT
+    else if (get().type == TokenType::BREAK)
+    {
+        return Statement(StatementType::BREAK, get().line, get().lineColumn, get().lineNumber);
+    }
+    // CONTINUE STATEMENT
+    else if (get().type == TokenType::CONTINUE)
+    {
+        return Statement(StatementType::CONTINUE, get().line, get().lineColumn, get().lineNumber);
     }
     else if (get().type != TokenType::EOL && get().type != TokenType::_EOF)
     {
         diagnostics->add_error("Bad statement!", get().line, get().lineColumn, get().lineNumber);
     }
 
-    return result;
+    return Statement(StatementType::ERROR, get().line, get().lineColumn, get().lineNumber);
 }
 
 Statement Parser::parse_function()
 {
+    Statement function(StatementType::FUNCTION, get().line, get().lineColumn, get().lineNumber);
+    std::shared_ptr<SI_Function> siFunction = std::make_shared<SI_Function>();
+    function.info = siFunction;
 
+    move_next(); // skip the func keyword
+
+    if (get().type != TokenType::WORD)
+        diagnostics->add_error("Function name is not specified!", get().line, get().lineColumn, get().lineNumber);
+
+    // set the name of the function
+    siFunction->functionName = get().value;
+
+    move_next();
+
+    // parse the functions parameters
+    if (get().type == TokenType::OPEN_PARAN)
+    {
+        move_next();
+
+        while (!eof() && get().type != TokenType::CLOSE_PARAN)
+        {
+            if (get().type == TokenType::COMMA)
+            {
+                if (next().type != TokenType::WORD)
+                {
+                    diagnostics->add_error("Commas should not go here.", get().line, get().lineColumn, get().lineNumber);
+                    break;
+                }
+                
+                move_next();
+            }
+
+            if (get().type != TokenType::WORD)
+            {
+                diagnostics->add_error("That is not a valid parameter name.", get().line, get().lineColumn, get().lineNumber);
+                break;
+            }
+
+            siFunction->parameterNames.push_back(get().value);
+            move_next();
+
+            if (get().type != TokenType::COMMA && get().type != TokenType::CLOSE_PARAN)
+            {
+                diagnostics->add_error("Yeah, you can't do this.", get().line, get().lineColumn, get().lineNumber);
+                break;
+            }
+        }
+
+        move_next();
+    }
+
+    while (get().type == TokenType::EOL)
+        move_next();
+
+    function.children.push_back(parse_block());
+
+    return function;
 }
 
 Statement Parser::parse_function_call()
@@ -165,11 +209,14 @@ Statement Parser::parse_function_call()
     Statement functionCall(StatementType::FUNCTION_CALL, get().line, get().lineColumn, get().lineNumber);
     std::shared_ptr<SI_String> siFunctionCall = std::make_shared<SI_String>();
     functionCall.info = siFunctionCall;
+
+    // set the name of the function to be called
     siFunctionCall->value = get().value;
 
     move_next();
-    move_next();
+    move_next(); // pass the open parenthesis
 
+    // parse the function calls parameters
     while (!eof() && get().type != TokenType::CLOSE_PARAN)
     {
         if (get().type == TokenType::COMMA)
@@ -189,40 +236,43 @@ Statement Parser::parse_function_call()
 
 Statement Parser::parse_if()
 {
-    Statement _if(StatementType::IF, get().line, get().lineColumn, get().lineNumber);
+    Statement ifStmt(StatementType::IF, get().line, get().lineColumn, get().lineNumber);
 
+    move_next(); // move to the start of the if's expression
+
+    ifStmt.children.push_back(parse_expression());
+
+    // find the ifs block
+    while (get().type == TokenType::EOL)
+        move_next();
+
+    ifStmt.children.push_back(parse_block());
+
+    // move to the next token passing end of lines
     move_next();
-
-    _if.children.push_back(parse_expression());
 
     while (get().type == TokenType::EOL)
         move_next();
 
-    _if.children.push_back(parse_block());
-
-    move_next();
-
-    while (get().type == TokenType::EOL)
-        move_next();
-
+    // if the next token is an else if or an else
     if (get().type == TokenType::ELSE && next().type == TokenType::IF)
     {
-        move_next();
-
-        _if.children.push_back(parse_if());
+        move_next(); // pass the else token
+        ifStmt.children.push_back(parse_if());
     }
     else if (get().type == TokenType::ELSE)
     {
-        _if.children.push_back(parse_else());
+        ifStmt.children.push_back(parse_else());
     }
 
-    return _if;
+    return ifStmt;
 }
 
 Statement Parser::parse_else()
 {
     Statement _else(StatementType::ELSE, get().line, get().lineColumn, get().lineNumber);
 
+    // find the elses block
     move_next();
 
     while (get().type == TokenType::EOL)
@@ -232,6 +282,52 @@ Statement Parser::parse_else()
 
     return _else;
 }
+
+Statement Parser::parse_while()
+{
+    Statement whileStmt(StatementType::WHILE, get().line, get().lineColumn, get().lineNumber);
+
+    move_next(); // move to the start of the while's expression
+
+    whileStmt.children.push_back(parse_expression());
+
+    // find the whiles block
+    while (get().type == TokenType::EOL)
+        move_next();
+
+    whileStmt.children.push_back(parse_block());
+
+    return whileStmt;
+}
+
+Statement Parser::parse_block()
+{
+    if (get().type != TokenType::OPEN_CURL)
+        diagnostics->add_error("Missing { for block!", get().line, get().lineColumn, get().lineNumber);
+
+    Statement block(StatementType::BLOCK, get().line, get().lineColumn, get().lineNumber);
+    move_next();
+
+    while (!eof() && get().type != TokenType::CLOSE_CURL)
+    {
+        Statement statement = parse_next_statement();
+
+        if (statement.type != StatementType::ERROR)
+            block.children.push_back(statement);
+
+        move_next();
+    }
+
+    if (get().type != TokenType::CLOSE_CURL)
+        diagnostics->add_error("Missing } for block!", get().line, get().lineColumn, get().lineNumber);
+
+    //move_next();
+    return block;
+}
+
+#pragma endregion
+
+#pragma region Expressions
 
 Statement Parser::parse_expression()
 {
@@ -465,31 +561,11 @@ Statement Parser::parse_term()
     return result;
 }
 
-Statement Parser::parse_block()
-{
-    if (get().type != TokenType::OPEN_CURL)
-        diagnostics->add_error("Missing { for block!", get().line, get().lineColumn, get().lineNumber);
+#pragma endregion
 
-    Statement block(StatementType::BLOCK, get().line, get().lineColumn, get().lineNumber);
-    move_next();
-
-    while (!eof() && get().type != TokenType::CLOSE_CURL)
-    {
-        Statement statement = parse_statement();
-
-        if (statement.type != StatementType::ERROR)
-            block.children.push_back(statement);
-
-        move_next();
-    }
-
-    if (get().type != TokenType::CLOSE_CURL)
-        diagnostics->add_error("Missing } for block!", get().line, get().lineColumn, get().lineNumber);
-
-    //move_next();
-    return block;
-}
-
+/**
+ * Prints a statement and its statements recursively.
+*/
 void Parser::print_statement(const Statement& statement, std::string padding)
 {
     std::string typeName = statement_type_as_str(statement.type);
@@ -566,6 +642,10 @@ void Parser::print_statement(const Statement& statement, std::string padding)
     }
 }
 
+#pragma endregion
+
+#pragma region Public Methods
+
 Parser::Parser() 
 {
     tokens = nullptr;
@@ -582,9 +662,9 @@ void Parser::parse_statements(std::vector<Token>* tokens, Diagnostics* diagnosti
     this->diagnostics = diagnostics;
     root.type = StatementType::BLOCK;
     
-    for (currentToken = 0; currentToken < tokens->size(); ++currentToken)
+    for (index = 0; index < tokens->size(); ++index)
     {
-        Statement statement = parse_statement();
+        Statement statement = parse_next_statement();
 
         if (statement.type != StatementType::ERROR)
             root.children.push_back(statement);
@@ -595,3 +675,5 @@ void Parser::print_ast()
 {
     print_statement(root, "");
 }
+
+#pragma endregion

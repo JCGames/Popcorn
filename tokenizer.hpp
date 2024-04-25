@@ -47,7 +47,10 @@ namespace pop
         GTHANE,
         LTHANE,
         STRING,
-        COMMA
+        COMMA,
+        RETURN,
+        BREAK,
+        CONTINUE
     };
 
     /**
@@ -87,7 +90,7 @@ namespace pop
         char get();
         char next();
         void parse_lines();
-        void parse_line();
+        void parse_tokens();
         void parse_token();
 
     public:

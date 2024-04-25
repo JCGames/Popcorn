@@ -18,6 +18,8 @@ namespace pop
         std::vector<std::string> lines;
 
     public:
+        File(std::string fileName);
+
         /**
          * Gets a line from the file.
         */

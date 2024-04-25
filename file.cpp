@@ -2,24 +2,9 @@
 
 using namespace pop;
 
-std::string File::get_line(const int& index)
+File::File(std::string fileName) 
 {
-    return lines[index];
-}
-
-void File::add_line(std::string line)
-{
-    lines.push_back(line);
-}
-
-int File::get_length() const
-{
-    return lines.size();
-}
-
-void File::load_file(std::string name)
-{
-    std::ifstream ifs(name);
+    std::ifstream ifs(fileName);
 
     if (!ifs.is_open())
         throw std::runtime_error("Could not open file!");
@@ -28,4 +13,28 @@ void File::load_file(std::string name)
         add_line(line);
 
     ifs.close();
+}
+
+/**
+ * Retrieves a line from the file.
+*/
+std::string File::get_line(const int& index)
+{
+    return lines[index];
+}
+
+/**
+ * Adds a line to the file.
+*/
+void File::add_line(std::string line)
+{
+    lines.push_back(line);
+}
+
+/**
+ * Gets the number of lines in the file.
+*/
+int File::get_length() const
+{
+    return lines.size();
 }

@@ -40,7 +40,10 @@ namespace pop
         STRING,
         NEGATE_OP,
         FUNCTION,
-        FUNCTION_CALL
+        FUNCTION_CALL,
+        RETURN,
+        BREAK,
+        CONTINUE,
     };
 
     /**
@@ -102,6 +105,12 @@ namespace pop
             return "FUNCTION";
         case StatementType::FUNCTION_CALL:
             return "FUNCTION CALL";
+        case StatementType::RETURN:
+            return "RETURN";
+        case StatementType::BREAK:
+            return "BREAK";
+        case StatementType::CONTINUE:
+            return "CONTINUE";
         }
 
         return "NOT A TYPE";
@@ -129,9 +138,6 @@ namespace pop
 
     #pragma endregion
 
-    /**
-     * A coded statement.
-    */
     struct Statement
     {
         std::shared_ptr<StatementInfo> info;
@@ -154,79 +160,36 @@ namespace pop
         std::vector<Token>* tokens;
         Diagnostics* diagnostics;
         Statement root;
-        unsigned int currentToken;
+        unsigned int index;
 
-        /**
-         * Checks to see if we are at the end of the token stream.
-        */
         bool eof() const;
-
-        /**
-         * Increments the current token index.
-        */
         void move_next();
-
-        /**
-         * Gets the current token.
-         * Returns an ERROR token if failure.
-        */
+        void move_back();
         Token get();
-
-        /**
-         * Gets the previous token.
-         * Returns an ERROR token if failure.
-        */
         Token prev();
-
-        /**
-         * Gets the next token.
-         * Returns an ERROR token if failure.
-        */
         Token next();
 
-        /**
-         * Parses a single statement.
-        */
-        Statement parse_statement();
-
+        Statement parse_next_statement();
         Statement parse_function();
-
         Statement parse_function_call();
-
         Statement parse_if();
-
         Statement parse_else();
-
-        Statement parse_expression();
-
-        Statement parse_boolean_operators();
-
-        Statement parse_add_sub();
-
-        Statement parse_mult_div_mod();
-
-        Statement parse_term();
-
+        Statement parse_while();
         Statement parse_block();
 
-        /**
-         * Prints a single statement.
-        */
+        Statement parse_expression();
+        Statement parse_boolean_operators();
+        Statement parse_add_sub();
+        Statement parse_mult_div_mod();
+        Statement parse_term();
+
         void print_statement(const Statement& statement, std::string padding);
 
     public:
         Parser();
-
+        
         Statement* get_root();
-
-        /**
-         * Parses all of the statements in a given list of tokens.
-        */
         void parse_statements(std::vector<Token>* tokens, Diagnostics* diagnostics);
-
-        /**
-         * Prints the abstract syntax tree.
-        */
         void print_ast();
     };
 }

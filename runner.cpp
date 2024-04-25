@@ -2,7 +2,19 @@
 
 using namespace pop;
 
-bool Scope::obj_exists_in_scope_history(const std::string& variableName)
+#pragma region Scope
+
+Scope::Scope()
+{
+    returnFlag = false;
+    breakFlag = false;
+    continueFlag = false;
+}
+
+/**
+ * Checks to see if a variable exists on the current or subsequent parent stacks.
+*/
+bool Scope::has_variable(const std::string& variableName)
 {   
     for (auto& sa : stack)
     {
@@ -13,10 +25,13 @@ bool Scope::obj_exists_in_scope_history(const std::string& variableName)
     }
 
     if (parent == nullptr) return false;
-    return parent->obj_exists_in_scope_history(variableName);
+    return parent->has_variable(variableName);
 }
 
-Object Scope::get_obj(const std::string& variableName)
+/**
+ * Gets the variable from the current or subsequent parent stacks.
+*/
+Object Scope::get_variable(const std::string& variableName)
 {
     for (auto& sa : stack)
     {
@@ -26,7 +41,7 @@ Object Scope::get_obj(const std::string& variableName)
 
     if (parent != nullptr)
     {
-        return parent->get_obj(variableName);
+        return parent->get_variable(variableName);
     } 
 
     Object nil;
@@ -34,9 +49,12 @@ Object Scope::get_obj(const std::string& variableName)
     return nil;
 }
 
-void Scope::set_obj(const std::string& variableName, Object value)
+/**
+ * Sets the variable on the current or subsequent parent stacks.
+*/
+void Scope::set_variable(const std::string& variableName, Object value)
 {
-    if (obj_exists_in_scope_history(variableName))
+    if (has_variable(variableName))
     {
         for (auto& sa : stack)
         {
@@ -47,7 +65,7 @@ void Scope::set_obj(const std::string& variableName, Object value)
             }
         }
 
-        parent->set_obj(variableName, value);
+        parent->set_variable(variableName, value);
     }
     else
     {
@@ -58,11 +76,9 @@ void Scope::set_obj(const std::string& variableName, Object value)
     }
 }
 
-void Scope::delete_obj()
-{
-    
-}
-
+/**
+ * Sets the parent scope.
+*/
 void Scope::set_parent(Scope* parent)
 {
     if (this == parent)
@@ -71,42 +87,112 @@ void Scope::set_parent(Scope* parent)
     this->parent = parent;
 }
 
+/**
+ * Finds all of the functions within a given block and saves them.
+*/
+void Scope::create_function_table(Statement& block)
+{
+    for (auto& stmt : block.children)
+    {
+        if (stmt.type == StatementType::FUNCTION)
+        {
+            functions.push_back(&stmt);
+        }
+    }
+}
+
+/**
+ * Retrieves a function from the given scope.
+*/
+Statement* Scope::get_function_in_block(std::string functionName)
+{
+    for (auto& function : functions)
+    {
+        if (SI_String* siFunction = static_cast<SI_String*>(function->info.get()))
+        {
+            if (siFunction->value == functionName)
+            {
+                return function;
+            }
+        }
+    }
+
+    if (parent != nullptr)
+        return parent->get_function_in_block(functionName);
+
+    return nullptr;
+}
+
+/**
+ * Gets this scopes stack.
+*/
 std::vector<StackAllocation>& Scope::get_stack()
 {
     return stack;
 }
 
-void Runner::run_block(Statement& root, Scope* parentScope)
+#pragma endregion
+
+#pragma region Private Methods
+
+/**
+ * Runs a single block of statements.
+*/
+void Runner::run_block(Statement& root, Scope* parentScope, Object* result)
 {
+    if (root.type != StatementType::BLOCK)
+        throw std::runtime_error("Trying to run a statement that is not a block as a block.");
+
     Scope currentScope;
     currentScope.set_parent(parentScope);
+    currentScope.create_function_table(root);
 
     for (auto& statement : root.children)
     {
-        run_statement(statement, currentScope);
+        run_statement(statement, currentScope, result);
 
+        if (currentScope.returnFlag)
+        {
+            parentScope->returnFlag = currentScope.returnFlag;
+            break;
+        }
+
+        if (currentScope.breakFlag)
+        {
+            parentScope->breakFlag = currentScope.breakFlag;
+            break;
+        }
+
+        if (currentScope.continueFlag)
+        {
+            parentScope->continueFlag = currentScope.continueFlag;
+            break;
+        }
+
+        // if we are running through our statements
+        // and one of our statements causes an error
+        // stop running this block of statements
         if (diagnostics->has_errors())
             break;
     }
-
-    // std::cout << "STACK:" << std::endl;
-    
-    // for (auto& sa : currentScope.get_stack())
-    // {
-    //     std::cout << "Variable Name: " << sa.variableName << std::endl;
-    //     sa.value.print();
-    // }
 }
 
-void Runner::run_statement(Statement& statement, Scope& scope)
+/**
+ * Runs a single statement.
+*/
+void Runner::run_statement(Statement& statement, Scope& scope, Object* result)
 {
+    if (statement.type == StatementType::FUNCTION) return;
+    if (scope.returnFlag || scope.breakFlag || scope.continueFlag) return;
+
+    // ASSIGNMENT STATEMENT
     if (statement.type == StatementType::ASSIGN)
     {
         if (SI_String* siAssign = static_cast<SI_String*>(statement.info.get()))
         {
             try 
             {
-                scope.set_obj(siAssign->value, eval_expression(statement.children[0], scope));
+                scope.set_variable(siAssign->value, eval_expression(statement.children[0], scope));
             }
             catch (const std::exception& exp)
             {
@@ -115,6 +201,7 @@ void Runner::run_statement(Statement& statement, Scope& scope)
             }
         }
     }
+    // IF STATEMENT
     else if (statement.type == StatementType::IF)
     {
         Object condition = eval_expression(statement.children[0], scope);
@@ -125,19 +212,51 @@ void Runner::run_statement(Statement& statement, Scope& scope)
         if (*static_cast<bool*>(condition.value.get()))
         {
             run_block(statement.children[1], &ifScope);
+
+            if (ifScope.breakFlag)
+            {
+                diagnostics->add_error("Cannot break here.", statement.line, statement.lineColumn, statement.lineNumber);
+            }
+
+            if (ifScope.continueFlag)
+            {
+                diagnostics->add_error("Cannot continue here.", statement.line, statement.lineColumn, statement.lineNumber);
+            }
+
+            if (ifScope.returnFlag)
+            {
+                scope.returnFlag = true;
+            }
         }
         else if (statement.children.size() == 3)
         {
             run_statement(statement.children[2], scope);
         }
     }
+    // ELSE STATEMENT
     else if (statement.type == StatementType::ELSE)
     {
         Scope elseScope;
         elseScope.set_parent(&scope);
 
         run_block(statement.children[0], &elseScope);
+
+        if (elseScope.breakFlag)
+        {
+            diagnostics->add_error("Cannot break here.", statement.line, statement.lineColumn, statement.lineNumber);
+        }
+
+        if (elseScope.continueFlag)
+        {
+            diagnostics->add_error("Cannot continue here.", statement.line, statement.lineColumn, statement.lineNumber);
+        }
+
+        if (elseScope.returnFlag)
+        {
+            scope.returnFlag = true;
+        }
     }
+    // WHILE STATEMENT
     else if (statement.type == StatementType::WHILE)
     {
         Object condition = eval_expression(statement.children[0], scope);
@@ -149,23 +268,39 @@ void Runner::run_statement(Statement& statement, Scope& scope)
         {
             run_block(statement.children[1], &whileScope);
             condition = eval_expression(statement.children[0], scope);
+            
+            if (whileScope.breakFlag)
+                break;
+
+            if (whileScope.continueFlag)
+            {
+                whileScope.continueFlag = false;
+                continue;
+            }
+
+            if (whileScope.returnFlag)
+            {
+                scope.returnFlag = true;
+                break;
+            }
         }
     }
+    // FUNCTION CALL STATEMENT
     else if (statement.type == StatementType::FUNCTION_CALL)
     {
-        SI_String siFunctionCall = *static_cast<SI_String*>(statement.info.get());
-
-        if (siFunctionCall.value == "print")
+        run_function_call(statement, scope);
+    }
+    else if (statement.type == StatementType::RETURN)
+    {
+        if (result != nullptr)
         {
-            try
-            {
-                if (statement.children.size() == 1)
-                    std::cout << *static_cast<std::string*>(eval_expression(statement.children[0], scope).to_string().value.get()) << std::endl;
-            }
-            catch (const std::exception& exp)
-            {
-                diagnostics->add_error("Could not print value!", statement.line, statement.lineColumn, statement.lineNumber);
-            }
+            Object evaluatedObject = eval_expression(statement.children[0], scope);
+            result->type == evaluatedObject.type;
+            result->value = evaluatedObject.value;
+        }
+        else
+        {
+            diagnostics->add_error("Cannot return here.", statement.line, statement.lineColumn, statement.lineNumber);
         }
     }
     else
@@ -174,6 +309,61 @@ void Runner::run_statement(Statement& statement, Scope& scope)
     }
 }
 
+Object Runner::run_function_call(Statement& functionCall, Scope& scope)
+{
+    SI_String siFunctionCall = *static_cast<SI_String*>(functionCall.info.get());
+
+    if (siFunctionCall.value == "print")
+    {
+        try
+        {
+            if (functionCall.children.size() == 1)
+                std::cout << *static_cast<std::string*>(eval_expression(functionCall.children[0], scope).to_string().value.get()) << std::endl;
+        }
+        catch (const std::exception& exp)
+        {
+            diagnostics->add_error(exp.what(), functionCall.line, functionCall.lineColumn, functionCall.lineNumber);
+        }
+    }
+    else
+    {
+        Statement* function = scope.get_function_in_block(siFunctionCall.value);
+
+        if (function != nullptr)
+        {
+            SI_Function* siFunction = static_cast<SI_Function*>(function->info.get());
+            
+            Scope functionScope;
+            functionScope.set_parent(&scope);
+            functionScope.create_function_table(function->children[0]);
+
+            if (siFunction->parameterNames.size() != functionCall.children.size()) 
+            {
+                diagnostics->add_error("Inccorect number of parameters!", functionCall.line, functionCall.lineColumn, functionCall.lineNumber);
+                return Object(); 
+            }
+
+            for (int i = 0; i < siFunction->parameterNames.size(); i++)
+            {
+                functionScope.set_variable(siFunction->parameterNames[i], eval_expression(functionCall.children[i], scope));
+            }
+
+            Object result;
+            run_block(function->children[0], &functionScope, &result);
+            return result;
+        }
+        else
+        {
+            diagnostics->add_error("The function with the name " + siFunctionCall.value + " has not been defined!", functionCall.line, functionCall.lineColumn, functionCall.lineNumber);
+        }
+    }
+
+    return Object();
+}
+
+/**
+ * Evaluates an expression.
+*/
 Object Runner::eval_expression(const Statement& statement, Scope& scope)
 {
     switch (statement.type)
@@ -236,7 +426,7 @@ Object Runner::eval_expression(const Statement& statement, Scope& scope)
     case StatementType::VARIABLE:
         if (SI_String* siVariable = static_cast<SI_String*>(statement.info.get()))
         {
-            return scope.get_obj(siVariable->value);
+            return scope.get_variable(siVariable->value);
         }
         break;
     case StatementType::NUMBER:
@@ -363,6 +553,10 @@ Object Runner::eval_expression(const Statement& statement, Scope& scope)
     return nil;
 }
 
+#pragma endregion
+
+#pragma region Public Methods
+
 void Runner::run(Statement* root, Diagnostics* diagnostics)
 {
     this->root = root;
@@ -394,3 +588,5 @@ void Runner::test1()
     Object result = eval_expression(add, scope);
     result.print();
 }
+
+#pragma endregion

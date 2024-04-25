@@ -29,13 +29,21 @@ namespace pop
     private:
         Scope* parent;
         std::vector<StackAllocation> stack;
+        std::vector<Statement*> functions;
 
     public:
-        bool obj_exists_in_scope_history(const std::string& variableName);
-        Object get_obj(const std::string& variableName);
-        void set_obj(const std::string& variableName, Object value);
-        void delete_obj();
+        bool returnFlag;
+        bool breakFlag;
+        bool continueFlag;
+
+        Scope();
+
+        bool has_variable(const std::string& variableName);
+        Object get_variable(const std::string& variableName);
+        void set_variable(const std::string& variableName, Object value);
         void set_parent(Scope* parent);
+        void create_function_table(Statement& block);
+        Statement* get_function_in_block(std::string functionName);
         std::vector<StackAllocation>& get_stack();
     };
 
@@ -47,8 +55,9 @@ namespace pop
         Statement* root;
         Diagnostics* diagnostics;
 
-        void run_block(Statement& root, Scope* parentScope);
-        void run_statement(Statement& statement, Scope& scope);
+        void run_block(Statement& root, Scope* parentScope, Object* result = nullptr);
+        void run_statement(Statement& statement, Scope& scope, Object* result = nullptr);
+        Object run_function_call(Statement& functionCall, Scope& scope);
         Object eval_expression(const Statement& statement, Scope& scope);
 
     public:

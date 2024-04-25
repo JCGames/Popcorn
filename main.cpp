@@ -30,8 +30,7 @@ int main(int argc, char** argv)
     if (argc == 0)
         return 0;
 
-    File file;
-    file.load_file(std::string(argv[1]));
+    File file = File(std::string(argv[1]));
 
     Diagnostics diagnostics;
 
